@@ -2,6 +2,37 @@ import { useState, useEffect } from 'react'
 import { adminService } from '../services'
 import Modal from '../components/Modal'
 
+
+const ROLE_DESCRIPTIONS = {
+  Пользователь: 'Слушает эфир, отправляет текстовые и голосовые сообщения.',
+  Ведущий: 'Управляет медиатекой, плейлистами и ходом эфира.',
+  Администратор: 'Управляет пользователями и при необходимости может быть ведущим.',
+}
+
+
+function ActionIconButton({ title, onClick, children }) {
+  return (
+    <button
+      type="button"
+      className="btn btn-outline btn-sm"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={{
+        width: '36px',
+        height: '36px',
+        padding: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+
 function AdminPage() {
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
@@ -73,9 +104,9 @@ function AdminPage() {
     }
   }
 
-  const handleBlock = async (userId, isBlocked) => {
+  const handleBlock = async (userId, nextDeletedState) => {
     try {
-      await adminService.updateUser(userId, { is_deleted: isBlocked ? 0 : 1 })
+      await adminService.updateUser(userId, { is_deleted: nextDeletedState })
       await loadUsers()
     } catch (error) {
       alert('Ошибка блокировки')
@@ -102,13 +133,37 @@ function AdminPage() {
   }
 
   const handleRoleCheckbox = (roleId) => {
+    const rolesByName = Object.fromEntries(roles.map(role => [role.name, role]))
+    const userRoleId = rolesByName['Пользователь']?.id
+    const hostRoleId = rolesByName['Ведущий']?.id
+    const adminRoleId = rolesByName['Администратор']?.id
+
     setFormData(prev => {
-      const roleIds = prev.role_ids || []
+      const selectedIds = new Set(prev.role_ids || [])
+      const hasHost = hostRoleId ? selectedIds.has(hostRoleId) : false
+      const hasAdmin = adminRoleId ? selectedIds.has(adminRoleId) : false
+
+      let nextRoleIds = []
+
+      if (roleId === userRoleId) {
+        nextRoleIds = userRoleId ? [userRoleId] : []
+      } else if (roleId === hostRoleId) {
+        if (hasHost) {
+          nextRoleIds = hasAdmin && adminRoleId ? [adminRoleId] : (userRoleId ? [userRoleId] : [])
+        } else {
+          nextRoleIds = hasAdmin && adminRoleId ? [adminRoleId, hostRoleId] : [hostRoleId]
+        }
+      } else if (roleId === adminRoleId) {
+        if (hasAdmin) {
+          nextRoleIds = hasHost && hostRoleId ? [hostRoleId] : (userRoleId ? [userRoleId] : [])
+        } else {
+          nextRoleIds = hasHost && hostRoleId ? [adminRoleId, hostRoleId] : [adminRoleId]
+        }
+      }
+
       return {
         ...prev,
-        role_ids: roleIds.includes(roleId)
-          ? roleIds.filter(id => id !== roleId)
-          : [...roleIds, roleId]
+        role_ids: nextRoleIds,
       }
     })
   }
@@ -244,18 +299,27 @@ function AdminPage() {
                   </td>
                   <td>
                     <div className="table-actions" style={{ flexWrap: 'wrap', gap: '0.375rem' }}>
-                      <button className="btn btn-outline btn-sm" onClick={() => openEditModal(user)}>
-                        ✏️
-                      </button>
-                      <button className="btn btn-outline btn-sm" onClick={() => openPasswordModal(user)}>
-                        🔑
-                      </button>
-                      <button className="btn btn-outline btn-sm" onClick={() => openRolesModal(user)}>
-                        📋
-                      </button>
+                      <ActionIconButton title="Редактировать профиль" onClick={() => openEditModal(user)}>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.586 3.586a2 2 0 112.828 2.828L11.5 14.328 8 15l.672-3.5 7.914-7.914z" />
+                        </svg>
+                      </ActionIconButton>
+                      <ActionIconButton title="Сменить пароль" onClick={() => openPasswordModal(user)}>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a5 5 0 00-9.584 2H4a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-1m4-10l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                      </ActionIconButton>
+                      <ActionIconButton title="Назначить роли" onClick={() => openRolesModal(user)}>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V9H2v11h5m10 0v-5a3 3 0 00-6 0v5m6 0H7" />
+                        </svg>
+                      </ActionIconButton>
                       <button 
+                        type="button"
                         className="btn btn-sm" 
                         onClick={() => handleBlock(user.id, !user.is_deleted)}
+                        title={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
+                        aria-label={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
                         style={{
                           background: user.is_deleted 
                             ? 'linear-gradient(135deg, #28a745, #34d058)'
@@ -266,11 +330,24 @@ function AdminPage() {
                       >
                         {user.is_deleted ? 'Разблокировать' : 'Блок'}
                       </button>
-                      <button 
-                        className="btn btn-danger btn-sm" 
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(user.id)}
+                        title="Удалить пользователя"
+                        aria-label="Удалить пользователя"
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          padding: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
                       >
-                        🗑️
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -374,16 +451,58 @@ function AdminPage() {
           </>
         }
       >
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.875rem 1rem',
+          borderRadius: 'var(--radius)',
+          background: 'rgba(229, 39, 19, 0.05)',
+          border: '1px solid rgba(229, 39, 19, 0.12)',
+          color: 'var(--ttk-gray)',
+          fontSize: '0.9rem',
+          lineHeight: 1.5,
+        }}>
+          Пользователь не совмещается с ведущим и администратором. Администратор может дополнительно быть ведущим.
+        </div>
+
         <div className="checkbox-group">
           {roles.map(role => (
-            <label key={role.id} className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.role_ids?.includes(role.id)}
-                onChange={() => handleRoleCheckbox(role.id)}
-              />
-              {role.name}
-            </label>
+            <button
+              key={role.id}
+              type="button"
+              className="checkbox-label"
+              onClick={() => handleRoleCheckbox(role.id)}
+              title={ROLE_DESCRIPTIONS[role.name] || role.name}
+              aria-pressed={formData.role_ids?.includes(role.id)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                background: formData.role_ids?.includes(role.id)
+                  ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.12), rgba(229, 39, 19, 0.05))'
+                  : '#fff',
+                border: formData.role_ids?.includes(role.id)
+                  ? '1px solid rgba(229, 39, 19, 0.35)'
+                  : '1px solid rgba(0, 0, 0, 0.08)',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: '0.2rem', color: 'var(--ttk-black)' }}>
+                  {role.name}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--ttk-gray-light)', lineHeight: 1.45 }}>
+                  {ROLE_DESCRIPTIONS[role.name] || 'Роль без описания'}
+                </div>
+              </div>
+              <div style={{
+                minWidth: '88px',
+                textAlign: 'right',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: formData.role_ids?.includes(role.id) ? 'var(--ttk-red)' : 'var(--ttk-gray-light)',
+              }}>
+                {formData.role_ids?.includes(role.id) ? 'Выбрано' : 'Назначить'}
+              </div>
+            </button>
           ))}
         </div>
       </Modal>

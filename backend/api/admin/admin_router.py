@@ -29,6 +29,27 @@ def user_query():
     return select(User).options(selectinload(User.roles))
 
 
+def normalize_roles_for_assignment(selected_roles: list[Role]) -> list[Role]:
+    roles_by_name = {role.name: role for role in selected_roles}
+
+    if RoleName.ADMIN.value in roles_by_name:
+        normalized_roles = [roles_by_name[RoleName.ADMIN.value]]
+        if RoleName.HOST.value in roles_by_name:
+            normalized_roles.append(roles_by_name[RoleName.HOST.value])
+        return normalized_roles
+
+    if RoleName.HOST.value in roles_by_name:
+        return [roles_by_name[RoleName.HOST.value]]
+
+    if RoleName.USER.value in roles_by_name:
+        return [roles_by_name[RoleName.USER.value]]
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Выберите допустимую роль: Пользователь, Ведущий или Администратор",
+    )
+
+
 @router.get("/users", response_model=list[UserResponse])
 async def get_all_users(
     login: Optional[str] = None,
@@ -201,6 +222,7 @@ async def assign_roles(
             detail="Одна или несколько ролей не найдены",
         )
 
+    roles = normalize_roles_for_assignment(roles)
     role_names = {role.name for role in roles}
     if user.id == current_user.id and RoleName.ADMIN.value not in role_names:
         raise HTTPException(

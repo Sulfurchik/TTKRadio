@@ -163,23 +163,52 @@ async def activate_playlist_for_host(db, host_id: int, playlist_id: int) -> Play
 
 
 async def sync_broadcast_state(db, state: BroadcastState) -> list[dict]:
+    state_changed = False
+
     if not state.playlist_id:
-        state.current_media_id = None
-        await db.flush()
+        if state.current_media_id is not None:
+            state.current_media_id = None
+            state_changed = True
+        if state.started_at is not None:
+            state.started_at = None
+            state_changed = True
+        if state.is_broadcasting:
+            state.is_broadcasting = False
+            state_changed = True
+
+        if state_changed:
+            state.updated_at = datetime.utcnow()
+            await db.flush()
+            await db.refresh(state, attribute_names=["playlist", "current_media"])
         return []
 
     items = await get_playlist_items(db, state.playlist_id)
     media_ids = [item["media"].id for item in items]
 
     if not items:
-        state.current_media_id = None
-        state.is_broadcasting = False
-    elif state.current_media_id not in media_ids:
+        if state.current_media_id is not None:
+            state.current_media_id = None
+            state_changed = True
+        if state.started_at is not None:
+            state.started_at = None
+            state_changed = True
+        if state.is_broadcasting:
+            state.is_broadcasting = False
+            state_changed = True
+    elif state.is_broadcasting and state.current_media_id is None:
         state.current_media_id = items[0]["media"].id
-    state.updated_at = datetime.utcnow()
-    await db.flush()
+        state_changed = True
+    elif state.current_media_id is not None and state.current_media_id not in media_ids:
+        state.current_media_id = items[0]["media"].id if state.is_broadcasting else None
+        if not state.is_broadcasting:
+            state.started_at = None
+        state_changed = True
 
-    await db.refresh(state, attribute_names=["playlist", "current_media"])
+    if state_changed:
+        state.updated_at = datetime.utcnow()
+        await db.flush()
+        await db.refresh(state, attribute_names=["playlist", "current_media"])
+
     return items
 
 
@@ -222,7 +251,8 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
     if not state.is_broadcasting or not state.started_at or not items or not state.current_media_id:
         return items
 
-    remaining_elapsed = max((datetime.utcnow() - state.started_at).total_seconds(), 0.0)
+    now = datetime.utcnow()
+    remaining_elapsed = max((now - state.started_at).total_seconds(), 0.0)
     current_index = next(
         (index for index, item in enumerate(items) if item["media"].id == state.current_media_id),
         None,
@@ -230,11 +260,13 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
     if current_index is None:
         current_index = 0
         state.current_media_id = items[0]["media"].id
-        state.started_at = datetime.utcnow()
+        state.started_at = now
+        state.updated_at = now
         await db.flush()
         await db.refresh(state, attribute_names=["playlist", "current_media"])
         return items
 
+    has_track_changed = False
     while state.is_broadcasting:
         current_media = items[current_index]["media"]
         if current_media.duration <= 0:
@@ -248,24 +280,21 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
             state.is_broadcasting = False
             state.current_media_id = None
             state.started_at = None
-            state.updated_at = datetime.utcnow()
+            state.updated_at = now
             await db.flush()
             await db.refresh(state, attribute_names=["playlist", "current_media"])
             return items
 
         current_index = next_index
+        has_track_changed = True
+
+    if has_track_changed:
         state.current_media_id = items[current_index]["media"].id
-        state.started_at = datetime.utcnow()
-        state.updated_at = datetime.utcnow()
+        state.started_at = now - timedelta(seconds=remaining_elapsed)
+        state.updated_at = now
         await db.flush()
         await db.refresh(state, attribute_names=["playlist", "current_media"])
         await create_history_entry(db, state)
-
-    if state.is_broadcasting and state.started_at is not None:
-        state.started_at = datetime.utcnow() - timedelta(seconds=remaining_elapsed)
-        state.updated_at = datetime.utcnow()
-        await db.flush()
-        await db.refresh(state, attribute_names=["playlist", "current_media"])
 
     return items
 

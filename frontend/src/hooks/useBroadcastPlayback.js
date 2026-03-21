@@ -126,6 +126,10 @@ export function useBroadcastPlayback({
       return
     }
 
+    if (!audio.paused && !options.forcePlay && !hasSourceChanged) {
+      return
+    }
+
     try {
       await audio.play()
       setIsAudioPlaying(true)
@@ -151,7 +155,10 @@ export function useBroadcastPlayback({
         const audio = audioRef.current
         if (audio) {
           audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
         }
+        currentTrackKeyRef.current = null
         setIsAudioPlaying(false)
         setIsBuffering(false)
         return

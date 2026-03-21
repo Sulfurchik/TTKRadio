@@ -212,6 +212,7 @@ class BackendSmokeTest(unittest.TestCase):
             json_body={"role_ids": [roles["Пользователь"], roles["Ведущий"]]},
         )
         self.assertEqual(status, 200, payload)
+        self.assertEqual({role["name"] for role in payload["roles"]}, {"Ведущий"})
 
         listener_auth = self.login("listener", "listener123!")
         host_auth = self.login("hoster", "hoster123!")
@@ -298,6 +299,7 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertIn("position_seconds", payload)
         self.assertIn("server_timestamp_ms", payload)
         player_initial_position = payload["position_seconds"]
+        first_started_at = payload["started_at"]
 
         status, payload = self.request(
             "GET",
@@ -308,6 +310,15 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertTrue(payload["is_broadcasting"])
         self.assertEqual(payload["current_media"]["id"], first_media_id)
         self.assertLess(abs(payload["position_seconds"] - player_initial_position), 0.75)
+
+        time.sleep(0.2)
+        status, payload = self.request(
+            "GET",
+            "/api/player/broadcast-status",
+            headers=listener_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["started_at"], first_started_at)
 
         time.sleep(1.3)
 
@@ -341,6 +352,22 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertEqual(status, 200, payload)
         self.assertTrue(payload["stream_url"].endswith(".wav"))
         self.assertIn("server_timestamp_ms", payload)
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/broadcast/stop",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "GET",
+            "/api/player/broadcast-status",
+            headers=listener_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_broadcasting"])
+        self.assertIsNone(payload["current_media"])
 
         status, payload = self.request("GET", "/api/host/messages", headers=host_headers)
         self.assertEqual(status, 200, payload)

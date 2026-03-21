@@ -108,8 +108,8 @@ async def create_default_admin() -> None:
         role_names = {role.name for role in admin_user.roles}
         if RoleName.ADMIN.value not in role_names:
             admin_user.roles.append(admin_role)
-        if RoleName.USER.value in roles_by_name and RoleName.USER.value not in role_names:
-            admin_user.roles.append(roles_by_name[RoleName.USER.value])
+        if RoleName.USER.value in role_names:
+            admin_user.roles = [role for role in admin_user.roles if role.name != RoleName.USER.value]
 
         await session.commit()
 

@@ -265,6 +265,8 @@ class BroadcastStatusResponse(BaseSchema):
     host_id: Optional[int] = None
     volume: float = 1.0
     mode: str = BroadcastMode.PLAYLIST.value
+    live_audio_active: bool = False
+    websocket_url: Optional[str] = None
     started_at: Optional[datetime] = None
     position_seconds: float = 0.0
     server_time: Optional[datetime] = None
@@ -279,6 +281,7 @@ class StreamResponse(BaseSchema):
     playlist: List[PlaylistItemResponse] = Field(default_factory=list)
     is_looping: bool = False
     is_shuffle: bool = False
+    live_audio_active: bool = False
     started_at: Optional[datetime] = None
     position_seconds: float = 0.0
     server_time: Optional[datetime] = None

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import StatusBanner from '../components/StatusBanner'
 import { getLocale, useLanguage } from '../hooks/useLanguage'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
+import { useLiveAudioStream } from '../hooks/useLiveAudioStream'
 import { playerService } from '../services'
 import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
 import { getMediaDisplayName } from '../utils/media'
@@ -28,6 +29,7 @@ function PlayerPage() {
   const audioChunksRef = useRef([])
   const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' })
   const videoRef = useRef(null)
+  const [liveMicHintVisible, setLiveMicHintVisible] = useState(false)
 
   const {
     audioRef: mediaRef,
@@ -43,6 +45,21 @@ function PlayerPage() {
     pollIntervalMs: 1000,
     volume,
     autoResume: true,
+    duckFactor: liveMicHintVisible ? 0.22 : 1,
+  })
+
+  const effectiveBroadcastVolume = Math.max(
+    0,
+    Math.min(1, volume * (typeof broadcastStatus?.volume === 'number' ? broadcastStatus.volume : 1)),
+  )
+  const {
+    audioRef: liveAudioRef,
+    isStreamActive: isLiveStreamActive,
+  } = useLiveAudioStream({
+    enabled: Boolean(broadcastStatus?.is_broadcasting && broadcastStatus?.websocket_url),
+    websocketUrl: broadcastStatus?.websocket_url || null,
+    volume: effectiveBroadcastVolume,
+    initiallyActive: Boolean(broadcastStatus?.live_audio_active),
   })
 
   useEffect(() => {
@@ -60,6 +77,10 @@ function PlayerPage() {
       stopMediaStream(mediaStreamRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    setLiveMicHintVisible(Boolean(broadcastStatus?.live_audio_active || isLiveStreamActive))
+  }, [broadcastStatus?.live_audio_active, isLiveStreamActive])
 
   useEffect(() => {
     const video = videoRef.current
@@ -139,10 +160,12 @@ function PlayerPage() {
 
     if (isAudioPlaying) {
       pause()
+      liveAudioRef.current?.pause()
       return
     }
 
     await play()
+    liveAudioRef.current?.play().catch(() => {})
   }
 
   const handleVolumeChange = (event) => {
@@ -234,10 +257,11 @@ function PlayerPage() {
   return (
     <div className="container page-shell">
       <audio ref={mediaRef} preload="auto" />
+      <audio ref={liveAudioRef} preload="none" />
 
       <section className="page-hero page-hero--player">
         <div className="page-hero__content">
-          <span className="page-hero__eyebrow">{t('navbar.air')}</span>
+          <span className="page-hero__eyebrow">{t('player.pageName')}</span>
           <h1 className="page-hero__title">{t('player.title')}</h1>
           <p className="page-hero__description">
             {t('player.subtitle')}
@@ -262,6 +286,7 @@ function PlayerPage() {
               <h2 className="card-title" style={{ fontSize: '1.1rem', margin: 0 }}>{t('player.player')}</h2>
               {broadcastStatus?.is_broadcasting && (
                 <div
+                  className="glass-badge"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -291,6 +316,14 @@ function PlayerPage() {
                   </span>
                 </div>
               )}
+              {liveMicHintVisible && (
+                <div className="glass-badge glass-badge--warn">
+                  <span className="recording-dot"></span>
+                  <span style={{ fontWeight: 700, color: 'var(--page-text)', fontSize: '0.82rem' }}>
+                    {t('player.liveMic')}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -313,7 +346,7 @@ function PlayerPage() {
               <div
                 className="player-cover"
                 style={{
-                  animation: isAudioPlaying ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+                  animation: isAudioPlaying ? 'pulse-glow 2s ease-in-out infinite' : 'playerFloat 5s ease-in-out infinite',
                   opacity: isBuffering ? 0.7 : 1,
                   transition: 'opacity 0.3s ease',
                 }}
@@ -405,6 +438,7 @@ function PlayerPage() {
 
             {currentTrack && (
               <div
+                className="track-summary-card"
                 style={{
                   textAlign: 'center',
                   padding: '1.25rem',

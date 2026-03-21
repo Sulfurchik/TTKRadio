@@ -17,10 +17,22 @@ from app.schemas import (
 from app.services.broadcast import get_public_broadcast_state
 from app.services.media import get_media_duration, save_upload_file
 from app.services.serializers import serialize_broadcast_status, serialize_message, serialize_voice_message
+from app.services.streaming import manager
 from config.settings import settings
 
 
 router = APIRouter(prefix="/api/player", tags=["Плеер"])
+
+
+def apply_live_audio_fields(serialized_status: BroadcastStatusResponse) -> BroadcastStatusResponse:
+    live_audio_active = bool(
+        serialized_status.is_broadcasting
+        and serialized_status.host_id
+        and manager.is_live_audio_active_for(serialized_status.host_id)
+    )
+    serialized_status.live_audio_active = live_audio_active
+    serialized_status.websocket_url = "/api/stream/ws/listen" if serialized_status.is_broadcasting else None
+    return serialized_status
 
 
 @router.get("/stream", response_model=StreamResponse)
@@ -31,15 +43,17 @@ async def get_stream_url(
     state, playlist_items_data = await get_public_broadcast_state(db)
     serialized_status = serialize_broadcast_status(state, playlist_items_data)
     await db.commit()
+    serialized_status = apply_live_audio_fields(serialized_status)
 
     return StreamResponse(
         stream_url=serialized_status.current_media.storage_url if serialized_status.current_media else None,
-        websocket_url="/api/stream/ws/listen" if serialized_status.is_broadcasting else None,
+        websocket_url=serialized_status.websocket_url,
         is_broadcasting=serialized_status.is_broadcasting,
         current_media=serialized_status.current_media,
         playlist=serialized_status.playlist,
         is_looping=serialized_status.is_looping,
         is_shuffle=serialized_status.is_shuffle,
+        live_audio_active=serialized_status.live_audio_active,
         started_at=serialized_status.started_at,
         position_seconds=serialized_status.position_seconds,
         server_time=serialized_status.server_time,
@@ -128,4 +142,4 @@ async def get_broadcast_status(
     state, playlist_items_data = await get_public_broadcast_state(db)
     serialized_status = serialize_broadcast_status(state, playlist_items_data)
     await db.commit()
-    return serialized_status
+    return apply_live_audio_fields(serialized_status)

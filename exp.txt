@@ -1,0 +1,119 @@
+  1 /* Светлая тема - переменные */
+       2 :root {
+       3   --ttk-red: #e52713;
+       4   --ttk-red-dark: #bf1f11;
+       5   --ttk-red-light: #ff6657;
+       6   --ttk-blue: var(--ttk-red);
+       7   --ttk-blue-light: var(--ttk-red-light);
+       8   --ttk-black: #171111;
+       9   --ttk-gray: #534846;
+      10   --ttk-gray-light: #7c706d;
+      11   --ttk-gray-200: #ddd2cf;
+      12   --ttk-gray-100: #f5efed;
+      13   --ttk-white: #ffffff;
+      14   --ttk-cream: #fff9f6;
+      15   --ttk-success: #1d8f58;
+      16   --ttk-warning: #b96c18;
+      17   --ttk-surface: rgba(255, 252, 250, 0.86);
+      18   --ttk-surface-strong: rgba(255, 252, 250, 0.94);
+      19   --ttk-border: rgba(229, 39, 19, 0.12);
+      20   --ttk-border-strong: rgba(229, 39, 19, 0.2);
+      21   --primary-color: var(--ttk-red);
+      22   --bg-color: var(--ttk-gray-100);
+      23   --text-secondary: var(--ttk-gray-light);
+      24   --border-color: rgba(229, 39, 19, 0.12);
+      25   --shadow-sm: 0 10px 30px rgba(114, 40, 26, 0.08);
+      26   --shadow-lg: 0 24px 60px rgba(114, 40, 26, 0.14);
+      27   --radius-sm: 12px;
+      28   --radius: 18px;
+      29   --radius-lg: 28px;
+      30   --content-width: 1360px;
+      31   --surface-card-bg: var(--ttk-surface);
+      32   --surface-panel-header: linear-gradient(135deg, rgba(229, 39, 19, 0.08), rgba(255, 255, 255, 0.72));
+      33   --page-text: var(--ttk-black);
+      34   --filter-bg: rgba(255, 247, 244, 0.62);
+      35 }
+      36
+      37 /* Темная тема - переменные */
+      38 html[data-theme="dark"] {
+      39   color-scheme: dark;
+      40   --ttk-black: #f6ebe7;
+      41   --ttk-gray: #c6b2ad;
+      42   --ttk-gray-light: #9f8f8a;
+      43   --ttk-gray-200: #4d3f40;
+      44   --ttk-gray-100: #171215;
+      45   --ttk-surface: rgba(28, 20, 24, 0.82);
+      46   --ttk-surface-strong: rgba(33, 24, 29, 0.92);
+      47   --ttk-border: rgba(255, 124, 107, 0.18);
+      48   --ttk-border-strong: rgba(255, 124, 107, 0.3);
+      49   --border-color: rgba(255, 124, 107, 0.18);
+      50   --shadow-sm: 0 12px 34px rgba(0, 0, 0, 0.28);
+      51   --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.42);
+      52   --surface-card-bg: rgba(26, 19, 23, 0.84);
+      53   --surface-panel-header: linear-gradient(135deg, rgba(229, 39, 19, 0.14), rgba(255, 255, 255, 0.03));
+      54   --page-text: #f6ebe7;
+      55   --filter-bg: rgba(38, 28, 33, 0.78);
+      56 }
+      57
+      58 /* Заголовки белые в темной теме */
+      59 html[data-theme='dark'] .page-hero__title,
+      60 html[data-theme='dark'] .card-title,
+      61 html[data-theme='dark'] .modal-title,
+      62 html[data-theme='dark'] .form-label,
+      63 html[data-theme='dark'] .user-name,
+      64 html[data-theme='dark'] .monitor-summary__title {
+      65   color: #fff;
+      66 }
+      67
+      68 /* Основной текст белый в темной теме */
+      69 html[data-theme='dark'] .page-hero__description,
+      70 html[data-theme='dark'] .nav-link,
+      71 html[data-theme='dark'] .hero-chip,
+      72 html[data-theme='dark'] .section-subtitle,
+      73 html[data-theme='dark'] .section-muted,
+      74 html[data-theme='dark'] .monitor-summary__meta,
+      75 html[data-theme='dark'] .monitor-status,
+      76 html[data-theme='dark'] .auth-subtitle,
+      77 html[data-theme='dark'] .auth-footer,
+      78 html[data-theme='dark'] .auth-footer a,
+      79 html[data-theme='dark'] .mono-value {
+      80   color: #fff;
+      81 }
+      82
+      83 /* Поля ввода с белым текстом в темной теме */
+      84 html[data-theme='dark'] .form-input,
+      85 html[data-theme='dark'] .messages-input,
+      86 html[data-theme='dark'] .filters,
+      87 html[data-theme='dark'] .monitor-volume,
+      88 html[data-theme='dark'] .player-controls,
+      89 html[data-theme='dark'] .upload-zone {
+      90   background: rgba(24, 19, 18, 0.94);
+      91   border-color: rgba(255, 126, 109, 0.18);
+      92   color: #fff;
+      93 }
+      94
+      95 /* Таблица с белым текстом в темной теме */
+      96 html[data-theme='dark'] .table th {
+      97   color: #fff;
+      98   background: rgba(34, 24, 23, 0.92);
+      99 }
+     100
+     101 /* Кнопки outline с белым текстом в темной теме */
+     102 html[data-theme='dark'] .btn-outline {
+     103   border-color: rgba(255, 126, 109, 0.22);
+     104   color: #fff;
+     105   background: rgba(255, 255, 255, 0.03);
+     106 }
+     107
+     108 /* Статус бейджи с белым текстом в темной теме */
+     109 html[data-theme='dark'] .status-new,
+     110 html[data-theme='dark'] .status-in_progress,
+     111 html[data-theme='dark'] .status-completed {
+     112   color: #fff;
+     113   background: rgba(45, 32, 30, 0.72);
+     114 }
+
+    И изменения в AdminPage.jsx для логина и ФИО:
+
+     1 <td style={{ fontWeight: 600, color: 'var(--page-text)' }}>{user.login}</td>
+     2 <td style={{ color: 'var(--page-text)' }}>{user.fio}</td>

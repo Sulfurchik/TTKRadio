@@ -220,7 +220,7 @@ function AdminPage() {
           background: user.is_deleted
             ? 'linear-gradient(135deg, #28a745, #34d058)'
             : 'linear-gradient(135deg, #ffc107, #ffdb73)',
-          color: user.is_deleted ? 'white' : 'var(--page-text)',
+          color: user.is_deleted ? 'white' : '#171111',
           border: 'none'
         }}
       >
@@ -569,10 +569,10 @@ function AdminPage() {
                 textAlign: 'left',
                 background: formData.role_ids?.includes(role.id)
                   ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.12), rgba(229, 39, 19, 0.05))'
-                  : '#fff',
+                  : 'var(--soft-panel-bg)',
                 border: formData.role_ids?.includes(role.id)
                   ? '1px solid rgba(229, 39, 19, 0.35)'
-                  : '1px solid rgba(0, 0, 0, 0.08)',
+                  : '1px solid var(--soft-panel-border)',
                 justifyContent: 'space-between',
               }}
               >

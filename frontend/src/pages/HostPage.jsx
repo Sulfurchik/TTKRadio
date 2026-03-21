@@ -5,12 +5,15 @@ import MessagesList from '../components/MessagesList'
 import StatusBanner from '../components/StatusBanner'
 import { getLocale, useLanguage } from '../hooks/useLanguage'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
+import { useAuthStore } from '../store/authStore'
 import { hostService } from '../services'
 import { formatPlaybackTime } from '../utils/broadcastSync'
+import { buildWebSocketUrl, createStreamingAudioRecorder } from '../utils/liveStream'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
 
 function HostPage() {
+  const { user } = useAuthStore()
   const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
   const locale = getLocale(language)
@@ -29,10 +32,16 @@ function HostPage() {
     return savedVolume ? parseFloat(savedVolume) : 0.55
   })
   const [broadcastVolume, setBroadcastVolume] = useState(1)
+  const [isLiveMicActive, setIsLiveMicActive] = useState(false)
+  const [isLiveMicConnecting, setIsLiveMicConnecting] = useState(false)
 
   const mediaRecorderRef = useRef(null)
   const mediaStreamRef = useRef(null)
   const audioChunksRef = useRef([])
+  const liveMicRecorderRef = useRef(null)
+  const liveMicStreamRef = useRef(null)
+  const liveMicSocketRef = useRef(null)
+  const liveMicStoppingRef = useRef(false)
 
   const {
     audioRef,
@@ -49,6 +58,7 @@ function HostPage() {
     volume: monitorVolume,
     autoResume: monitorEnabled,
     enableAudio: monitorEnabled,
+    duckFactor: isLiveMicActive ? 0.22 : 1,
   })
 
   const selectedPlaylist = useMemo(
@@ -75,6 +85,23 @@ function HostPage() {
   }, [broadcastStatus?.volume])
 
   useEffect(() => {
+    setIsLiveMicActive(Boolean(broadcastStatus?.live_audio_active))
+  }, [broadcastStatus?.live_audio_active])
+
+  useEffect(() => {
+    if (broadcastStatus?.is_broadcasting) {
+      return
+    }
+
+    if (isLiveMicActive || isLiveMicConnecting) {
+      liveMicStoppingRef.current = true
+      teardownLiveMicTransport()
+      setIsLiveMicActive(false)
+      setIsLiveMicConnecting(false)
+    }
+  }, [broadcastStatus?.is_broadcasting, isLiveMicActive, isLiveMicConnecting])
+
+  useEffect(() => {
     const intervalId = setInterval(() => {
       loadMessages(showArchive)
     }, 3000)
@@ -85,6 +112,10 @@ function HostPage() {
   useEffect(() => {
     return () => {
       stopMediaStream(mediaStreamRef.current)
+      liveMicStoppingRef.current = true
+      liveMicRecorderRef.current?.stop?.()
+      liveMicSocketRef.current?.close?.()
+      stopMediaStream(liveMicStreamRef.current)
     }
   }, [])
 
@@ -292,6 +323,9 @@ function HostPage() {
 
   const handleStopBroadcast = async () => {
     try {
+      if (isLiveMicActive || isLiveMicConnecting) {
+        await stopLiveMicBroadcast()
+      }
       await hostService.stopBroadcast()
       await refreshStatus()
       setNotice(null)
@@ -359,14 +393,157 @@ function HostPage() {
     }
   }
 
-  const showMicrophoneAccessNotice = () => {
+  const teardownLiveMicTransport = () => {
+    liveMicRecorderRef.current = null
+    if (liveMicSocketRef.current && liveMicSocketRef.current.readyState <= WebSocket.OPEN) {
+      liveMicSocketRef.current.close()
+    }
+    liveMicSocketRef.current = null
+    stopMediaStream(liveMicStreamRef.current)
+    liveMicStreamRef.current = null
+  }
+
+  const stopLiveMicBroadcast = async ({ notifyServer = true } = {}) => {
+    liveMicStoppingRef.current = true
+
+    try {
+      if (liveMicSocketRef.current?.readyState === WebSocket.OPEN) {
+        liveMicSocketRef.current.send(JSON.stringify({ type: 'live_audio_stop' }))
+      }
+    } catch (error) {
+      console.debug('Не удалось отправить событие остановки live-микрофона', error)
+    }
+
+    if (liveMicRecorderRef.current?.state && liveMicRecorderRef.current.state !== 'inactive') {
+      liveMicRecorderRef.current.stop()
+    }
+
+    teardownLiveMicTransport()
+    setIsLiveMicActive(false)
+    setIsLiveMicConnecting(false)
+
+    if (!notifyServer) {
+      liveMicStoppingRef.current = false
+      return
+    }
+
+    try {
+      await hostService.stopLiveAudioBroadcast()
+      await refreshStatus()
+      setNotice(null)
+    } catch (error) {
+      setNotice({ type: 'error', text: t('host.liveMicStopError') })
+    } finally {
+      liveMicStoppingRef.current = false
+    }
+  }
+
+  const startLiveMicBroadcast = async () => {
+    if (!broadcastStatus?.is_broadcasting) {
+      setNotice({ type: 'error', text: t('host.liveMicRequiresBroadcast') })
+      return
+    }
+
+    if (!user?.id) {
+      setNotice({ type: 'error', text: t('host.liveMicError') })
+      return
+    }
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setNotice({ type: 'error', text: t('host.liveMicError') })
+      return
+    }
+
+    setIsLiveMicConnecting(true)
+    liveMicStoppingRef.current = false
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      liveMicStreamRef.current = stream
+
+      const { recorder } = createStreamingAudioRecorder(stream)
+      liveMicRecorderRef.current = recorder
+
+      const socket = new WebSocket(
+        buildWebSocketUrl(`/api/stream/ws/host/${user.id}?token=${encodeURIComponent(token)}`),
+      )
+      socket.binaryType = 'arraybuffer'
+      liveMicSocketRef.current = socket
+
+      recorder.ondataavailable = async (event) => {
+        if (!event.data?.size || socket.readyState !== WebSocket.OPEN) {
+          return
+        }
+
+        const chunk = await event.data.arrayBuffer()
+        socket.send(chunk)
+      }
+
+      recorder.onstop = () => {
+        stopMediaStream(liveMicStreamRef.current)
+        liveMicStreamRef.current = null
+      }
+
+      socket.onopen = async () => {
+        try {
+          await hostService.startLiveAudioBroadcast()
+          socket.send(JSON.stringify({ type: 'live_audio_start' }))
+          recorder.start(250)
+          setIsLiveMicActive(true)
+          setIsLiveMicConnecting(false)
+          await refreshStatus()
+          setNotice(null)
+        } catch (error) {
+          await stopLiveMicBroadcast({ notifyServer: false })
+          setNotice({ type: 'error', text: error.response?.data?.detail || t('host.liveMicError') })
+        }
+      }
+
+      socket.onerror = () => {
+        teardownLiveMicTransport()
+        setIsLiveMicActive(false)
+        setIsLiveMicConnecting(false)
+        setNotice({ type: 'error', text: t('host.liveMicError') })
+      }
+
+      socket.onclose = async () => {
+        if (!liveMicStoppingRef.current) {
+          teardownLiveMicTransport()
+          setIsLiveMicActive(false)
+          setIsLiveMicConnecting(false)
+          try {
+            await hostService.stopLiveAudioBroadcast()
+          } catch (error) {
+            console.debug('Не удалось синхронизировать остановку live-микрофона', error)
+          }
+          await refreshStatus()
+        }
+      }
+    } catch (error) {
+      setIsLiveMicConnecting(false)
+      if (String(error?.message || '').includes('not supported')) {
+        setNotice({ type: 'error', text: t('host.liveMicUnsupported') })
+      } else {
+        showMicrophoneAccessNotice(startLiveMicBroadcast)
+      }
+    }
+  }
+
+  const showMicrophoneAccessNotice = (retryAction = startRecording) => {
     setNotice({
       type: 'warning',
       title: t('common.attention'),
       text: t('host.micAccessError'),
       action: {
         label: t('player.micRetry'),
-        onClick: startRecording,
+        onClick: retryAction,
       },
     })
   }
@@ -433,7 +610,7 @@ function HostPage() {
 
       <section className="page-hero">
         <div className="page-hero__content">
-          <span className="page-hero__eyebrow">{t('navbar.panel')}</span>
+          <span className="page-hero__eyebrow">{t('host.pageName')}</span>
           <h1 className="page-hero__title">{t('host.title')}</h1>
           <p className="page-hero__description">
             {t('host.description')}
@@ -445,6 +622,10 @@ function HostPage() {
             </span>
             <span className="hero-chip">{t('host.playlist')}: {selectedPlaylist?.name || t('host.notSelected')}</span>
             <span className="hero-chip">{t('host.monitoring')}: {monitorEnabled ? t('host.enabled') : t('host.disabled')}</span>
+            <span className={`hero-chip ${isLiveMicActive ? 'hero-chip--live' : ''}`}>
+              <span className="recording-dot" style={{ opacity: isLiveMicActive ? 1 : 0.35 }}></span>
+              {isLiveMicActive ? t('host.liveMicActive') : t('host.liveMicInactive')}
+            </span>
           </div>
         </div>
 
@@ -551,6 +732,28 @@ function HostPage() {
           ) : (
             <p className="section-muted">{t('host.noBroadcastYet')}</p>
           )}
+        </div>
+
+        <div className="glass-panel live-mic-panel">
+          <div>
+            <div className="card-title" style={{ marginBottom: '0.35rem', fontSize: '1rem' }}>{t('host.liveMic')}</div>
+            <p className="section-subtitle" style={{ marginBottom: 0 }}>
+              {t('host.liveMicDescription')}
+            </p>
+          </div>
+          <div className="surface-card__actions">
+            <div className={`status-badge ${isLiveMicActive ? 'status-in_progress' : 'status-completed'}`}>
+              {isLiveMicConnecting ? t('host.liveMicConnecting') : isLiveMicActive ? t('host.liveMicActive') : t('host.liveMicInactive')}
+            </div>
+            <button
+              type="button"
+              className={`btn ${isLiveMicActive ? 'btn-danger' : 'btn-primary'} btn-sm`}
+              onClick={isLiveMicActive ? () => stopLiveMicBroadcast() : startLiveMicBroadcast}
+              disabled={isLiveMicConnecting}
+            >
+              {isLiveMicActive ? t('host.stopLiveMic') : t('host.startLiveMic')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -713,6 +916,14 @@ function HostPage() {
               accept={['mp3', 'wav', 'ogg', 'mp4', 'webm']}
               maxSize={1000}
             />
+
+            <div className="upload-rules-grid">
+              <div className="glass-panel upload-rule-card">
+                <div className="card-title" style={{ marginBottom: '0.45rem', fontSize: '0.95rem' }}>{t('host.uploadRulesTitle')}</div>
+                <p className="section-subtitle" style={{ marginBottom: '0.35rem' }}>{t('host.audioUploadRules')}</p>
+                <p className="section-subtitle" style={{ marginBottom: 0 }}>{t('host.videoUploadRules')}</p>
+              </div>
+            </div>
 
             <div
               style={{

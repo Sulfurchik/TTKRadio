@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.constants import MediaType, MessageStatus
+from app.constants import BroadcastMode, MediaType, MessageStatus
 from app.database import get_db
 from app.middleware.auth import require_host
 from app.models import MediaLibrary, Message, Playlist, User, VoiceMessage
@@ -54,10 +54,22 @@ from app.services.serializers import (
     serialize_playlist,
     serialize_voice_message,
 )
+from app.services.streaming import manager
 from config.settings import settings
 
 
 router = APIRouter(prefix="/api/host", tags=["Ведущий"])
+
+
+def apply_live_audio_fields(serialized_status: BroadcastStatusResponse) -> BroadcastStatusResponse:
+    live_audio_active = bool(
+        serialized_status.is_broadcasting
+        and serialized_status.host_id
+        and manager.is_live_audio_active_for(serialized_status.host_id)
+    )
+    serialized_status.live_audio_active = live_audio_active
+    serialized_status.websocket_url = "/api/stream/ws/listen" if serialized_status.is_broadcasting else None
+    return serialized_status
 
 
 async def get_host_playlist(db: AsyncSession, host_id: int, playlist_id: int) -> Playlist:
@@ -305,7 +317,7 @@ async def get_broadcast_status(
     state = await get_or_create_broadcast_state(db, current_user.id)
     playlist_items_data = await progress_broadcast_if_needed(db, state)
     await db.commit()
-    return serialize_broadcast_status(state, playlist_items_data)
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
 
 
 @router.post("/broadcast/start", response_model=OperationResponse)
@@ -314,6 +326,7 @@ async def start_broadcast(
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
+    manager.deactivate_live_audio()
     await start_playlist_broadcast(db, current_user.id, playlist_id)
     await db.commit()
     return OperationResponse(message="Вещание запущено")
@@ -324,6 +337,7 @@ async def stop_current_broadcast(
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
+    manager.deactivate_live_audio(str(current_user.id))
     await stop_broadcast(db, current_user.id)
     await db.commit()
     return OperationResponse(message="Вещание остановлено")
@@ -336,7 +350,7 @@ async def next_broadcast_track(
 ):
     state, playlist_items_data = await advance_playlist(db, current_user.id)
     await db.commit()
-    return serialize_broadcast_status(state, playlist_items_data)
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
 
 
 @router.post("/broadcast/previous", response_model=BroadcastStatusResponse)
@@ -346,7 +360,7 @@ async def previous_broadcast_track(
 ):
     state, playlist_items_data = await rewind_playlist(db, current_user.id)
     await db.commit()
-    return serialize_broadcast_status(state, playlist_items_data)
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
 
 
 @router.put("/broadcast/volume", response_model=BroadcastStatusResponse)
@@ -360,7 +374,7 @@ async def update_broadcast_volume(
     state.updated_at = datetime.utcnow()
     playlist_items_data = await sync_broadcast_state(db, state)
     await db.commit()
-    return serialize_broadcast_status(state, playlist_items_data)
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
 
 
 @router.put("/broadcast/current-media", response_model=BroadcastStatusResponse)
@@ -371,7 +385,43 @@ async def update_current_media(
 ):
     state, playlist_items_data = await set_current_media(db, current_user.id, request.media_id)
     await db.commit()
-    return serialize_broadcast_status(state, playlist_items_data)
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
+
+
+@router.post("/broadcast/live-audio/start", response_model=BroadcastStatusResponse)
+async def start_live_audio_broadcast(
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    state = await get_or_create_broadcast_state(db, current_user.id)
+    playlist_items_data = await progress_broadcast_if_needed(db, state)
+    if not state.is_broadcasting:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Сначала запустите эфир, а затем включайте микрофон",
+        )
+
+    manager.activate_live_audio(str(current_user.id))
+    state.source_type = BroadcastMode.LIVE_AUDIO.value
+    state.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(state, attribute_names=["playlist", "current_media"])
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
+
+
+@router.post("/broadcast/live-audio/stop", response_model=BroadcastStatusResponse)
+async def stop_live_audio_broadcast(
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    state = await get_or_create_broadcast_state(db, current_user.id)
+    playlist_items_data = await progress_broadcast_if_needed(db, state)
+    manager.deactivate_live_audio(str(current_user.id))
+    state.source_type = BroadcastMode.PLAYLIST.value
+    state.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(state, attribute_names=["playlist", "current_media"])
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
 
 
 @router.get("/messages", response_model=list[MessageResponse])

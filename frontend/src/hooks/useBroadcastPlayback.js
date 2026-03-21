@@ -66,6 +66,7 @@ export function useBroadcastPlayback({
   volume = 1,
   autoResume = true,
   enableAudio = true,
+  duckFactor = 1,
 }) {
   const audioRef = useRef(null)
   const loadStatusRef = useRef(null)
@@ -73,6 +74,7 @@ export function useBroadcastPlayback({
   const currentTrackKeyRef = useRef(null)
   const userPausedRef = useRef(false)
   const requestIdRef = useRef(0)
+  const volumeAnimationFrameRef = useRef(null)
 
   const [broadcastStatus, setBroadcastStatus] = useState(null)
   const [currentTrack, setCurrentTrack] = useState(null)
@@ -80,14 +82,42 @@ export function useBroadcastPlayback({
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
 
-  const applyAudioVolume = (audio, status) => {
+  const applyAudioVolume = (audio, status, { animate = false } = {}) => {
     if (!audio) {
       return
     }
 
     const broadcastVolume = typeof status?.volume === 'number' ? status.volume : 1
-    const effectiveVolume = Math.max(0, Math.min(1, volume * broadcastVolume))
-    audio.volume = effectiveVolume
+    const effectiveVolume = Math.max(0, Math.min(1, volume * broadcastVolume * duckFactor))
+
+    if (!animate) {
+      if (volumeAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(volumeAnimationFrameRef.current)
+        volumeAnimationFrameRef.current = null
+      }
+      audio.volume = effectiveVolume
+      return
+    }
+
+    const startVolume = Number.isFinite(audio.volume) ? audio.volume : 1
+    const startedAt = performance.now()
+    const durationMs = 240
+
+    if (volumeAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(volumeAnimationFrameRef.current)
+    }
+
+    const animateStep = (timestamp) => {
+      const progress = Math.min((timestamp - startedAt) / durationMs, 1)
+      audio.volume = startVolume + (effectiveVolume - startVolume) * progress
+      if (progress < 1) {
+        volumeAnimationFrameRef.current = requestAnimationFrame(animateStep)
+      } else {
+        volumeAnimationFrameRef.current = null
+      }
+    }
+
+    volumeAnimationFrameRef.current = requestAnimationFrame(animateStep)
   }
 
   const syncAudioElement = async (status, options = {}) => {
@@ -252,9 +282,9 @@ export function useBroadcastPlayback({
       return undefined
     }
 
-    applyAudioVolume(audio, currentStatusRef.current)
+    applyAudioVolume(audio, currentStatusRef.current, { animate: true })
     return undefined
-  }, [volume])
+  }, [volume, duckFactor])
 
   useEffect(() => {
     if (enableAudio) {
@@ -279,6 +309,14 @@ export function useBroadcastPlayback({
     }, 250)
 
     return () => clearInterval(timerId)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (volumeAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(volumeAnimationFrameRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {

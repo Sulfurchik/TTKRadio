@@ -191,6 +191,16 @@ export const hostService = {
     return response.data
   },
 
+  startLiveAudioBroadcast: async () => {
+    const response = await api.post('/host/broadcast/live-audio/start')
+    return response.data
+  },
+
+  stopLiveAudioBroadcast: async () => {
+    const response = await api.post('/host/broadcast/live-audio/stop')
+    return response.data
+  },
+
   // Сообщения
   getMessages: async (statusFilter) => {
     const params = statusFilter ? `?status=${statusFilter}` : ''

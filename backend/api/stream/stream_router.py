@@ -75,8 +75,13 @@ async def host_stream(
     await manager.connect_host(websocket, str(host_id))
     try:
         while True:
-            data = await websocket.receive_bytes()
-            await manager.broadcast_binary(str(host_id), data)
+            message = await websocket.receive()
+            data = message.get("bytes")
+            text = message.get("text")
+            if data:
+                await manager.broadcast_binary(str(host_id), data)
+            elif text:
+                await manager.broadcast_text(str(host_id), text)
     except WebSocketDisconnect:
         manager.disconnect_host(websocket, str(host_id))
     except Exception:
@@ -101,6 +106,7 @@ async def get_stream_status(
     return {
         "is_broadcasting": bool(state and state.is_broadcasting),
         "listeners_count": manager.listeners_count,
+        "live_audio_active": bool(state and manager.is_live_audio_active_for(state.host_id)),
         "current_media": current_media,
         "playlist_size": len(playlist_items_data),
     }

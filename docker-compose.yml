@@ -1,0 +1,75 @@
+# TransCom Stream - Docker Compose for Production
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ttk_postgres
+    environment:
+      POSTGRES_DB: transcom_stream
+      POSTGRES_USER: transcom
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_this_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ttk_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transcom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ttk_backend
+    environment:
+      DATABASE_URL: postgresql://transcom:${DB_PASSWORD:-change_this_password}@postgres:5432/transcom_stream
+      SECRET_KEY: ${SECRET_KEY:-change_this_secret_key}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+    volumes:
+      - ./backend/storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ttk_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ttk_frontend
+    depends_on:
+      - backend
+    networks:
+      - ttk_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: ttk_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/var/www/frontend:ro
+      - ./backend/storage:/var/www/storage:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - ttk_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  ttk_network:
+    driver: bridge

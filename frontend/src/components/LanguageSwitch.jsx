@@ -20,12 +20,18 @@ function LanguageSwitch() {
   }
 
   const handleCurrentClick = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches) {
+      return
+    }
     setIsExpanded(prev => !prev)
   }
 
   const handleLanguageSelect = (nextLanguage) => {
     setLanguage(nextLanguage)
     collapse()
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
   }
 
   return (

@@ -798,18 +798,8 @@ function HostPage() {
                     : t('host.liveMicDescription')}
                 </div>
               </div>
-              <div className="monitor-status">
-                <span className="recording-dot" style={{ opacity: isLiveMicActive || isLiveMicConnecting ? 1 : 0.35 }}></span>
-                {isLiveMicConnecting
-                  ? t('host.liveMicConnecting')
-                  : isLiveMicActive
-                    ? t('host.liveMicActive')
-                    : t('host.liveMicInactive')}
-              </div>
             </div>
-          ) : (
-            <p className="section-muted">{t('host.noBroadcastYet')}</p>
-          )}
+          ) : null}
         </div>
 
         <div className="glass-panel live-mic-panel">
@@ -820,9 +810,6 @@ function HostPage() {
             </p>
           </div>
           <div className="surface-card__actions">
-            <div className={`status-badge ${isLiveMicActive ? 'status-in_progress' : 'status-completed'}`}>
-              {isLiveMicConnecting ? t('host.liveMicConnecting') : isLiveMicActive ? t('host.liveMicActive') : t('host.liveMicInactive')}
-            </div>
             <button
               type="button"
               className={`btn ${isLiveMicActive ? 'btn-danger' : 'btn-primary'} btn-sm`}

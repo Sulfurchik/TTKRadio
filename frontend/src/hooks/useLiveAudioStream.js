@@ -210,6 +210,26 @@ export function useLiveAudioStream({
     }
   }, [enabled, websocketUrl])
 
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined') {
+      return undefined
+    }
+
+    const resumeOnInteraction = () => {
+      ensureAudioContext().catch(() => {})
+    }
+
+    window.addEventListener('pointerdown', resumeOnInteraction, { passive: true })
+    window.addEventListener('touchstart', resumeOnInteraction, { passive: true })
+    window.addEventListener('keydown', resumeOnInteraction)
+
+    return () => {
+      window.removeEventListener('pointerdown', resumeOnInteraction)
+      window.removeEventListener('touchstart', resumeOnInteraction)
+      window.removeEventListener('keydown', resumeOnInteraction)
+    }
+  }, [enabled])
+
   return {
     isConnected,
     isStreamActive,

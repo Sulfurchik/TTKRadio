@@ -360,7 +360,7 @@ function PlayerPage() {
       <StatusBanner notice={notice} onDismiss={() => setNotice(null)} />
 
       <div className="player-page-grid">
-        <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div
             className="card-header surface-panel-header player-panel-header"
             style={{
@@ -605,12 +605,12 @@ function PlayerPage() {
           </div>
         </div>
 
-        <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="surface-card surface-card--panel communication-panel-shell" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="card-header surface-panel-header player-panel-header" style={{ padding: '1.25rem 1.5rem', margin: 0 }}>
             <h2 className="card-title" style={{ fontSize: '1.1rem', margin: 0 }}>{t('player.communication')}</h2>
           </div>
 
-          <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="communication-panel-body" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <form onSubmit={handleSendMessage} style={{ marginBottom: '1.5rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <textarea
@@ -619,7 +619,7 @@ function PlayerPage() {
                   onChange={event => setMessage(event.target.value)}
                   placeholder={t('player.messagePlaceholder')}
                   rows={4}
-                  style={{ width: '100%', resize: 'vertical', maxHeight: '12rem' }}
+                  style={{ width: '100%', resize: 'none', minHeight: '7.5rem', maxHeight: '7.5rem' }}
                 />
               </div>
 
@@ -646,7 +646,7 @@ function PlayerPage() {
               )}
             </form>
 
-            <div style={{ flex: 1, overflowY: 'auto', borderTop: '2px solid var(--ttk-border)', paddingTop: '1rem' }}>
+            <div className="player-chat-region">
               <h3
                 style={{
                   fontSize: '0.9rem',
@@ -660,7 +660,7 @@ function PlayerPage() {
               >
                 {t('player.messages')}
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="player-chat-feed">
                 {messages.length > 0 ? (
                   messages.map(msg => (
                     <div

@@ -148,7 +148,6 @@ function PlayerPage() {
               <span className="recording-dot" style={{ opacity: broadcastStatus?.is_broadcasting ? 1 : 0.35 }}></span>
               {broadcastStatus?.is_broadcasting ? `В эфире ${formatPlaybackTime(playbackSeconds)}` : 'Ожидание эфира'}
             </span>
-            <span className="hero-chip">Громкость: {Math.round(volume * 100)}%</span>
             <span className="hero-chip">{currentTrack ? currentTrack.original_name : 'Нет активного трека'}</span>
           </div>
         </div>

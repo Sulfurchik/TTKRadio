@@ -177,6 +177,63 @@ function AdminPage() {
     })
   }
 
+  const getUserStateLabel = (user) => (user.is_deleted ? 'Заблокирован' : 'Активен')
+
+  const renderUserActions = (user) => (
+    <div className="table-actions" style={{ flexWrap: 'wrap', gap: '0.375rem' }}>
+      <ActionIconButton title="Редактировать профиль" onClick={() => openEditModal(user)}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.586 3.586a2 2 0 112.828 2.828L11.5 14.328 8 15l.672-3.5 7.914-7.914z" />
+        </svg>
+      </ActionIconButton>
+      <ActionIconButton title="Сменить пароль" onClick={() => openPasswordModal(user)}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a5 5 0 00-9.584 2H4a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-1m4-10l-3 3m0 0l-3-3m3 3V4" />
+        </svg>
+      </ActionIconButton>
+      <ActionIconButton title="Назначить роли" onClick={() => openRolesModal(user)}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h8a2 2 0 012 2v2h2a2 2 0 012 2v8a2 2 0 01-2 2h-6l-3 2v-2H6a2 2 0 01-2-2V6zm4 3h4m-4 4h4m5 1l1.5 1.5L18 12" />
+        </svg>
+      </ActionIconButton>
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={() => handleBlock(user.id, !user.is_deleted)}
+        title={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
+        aria-label={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
+        style={{
+          background: user.is_deleted
+            ? 'linear-gradient(135deg, #28a745, #34d058)'
+            : 'linear-gradient(135deg, #ffc107, #ffdb73)',
+          color: user.is_deleted ? 'white' : '#333',
+          border: 'none'
+        }}
+      >
+        {user.is_deleted ? 'Разблокировать' : 'Блок'}
+      </button>
+      <button
+        type="button"
+        className="btn btn-danger btn-sm"
+        onClick={() => handleDelete(user.id)}
+        title="Удалить пользователя"
+        aria-label="Удалить пользователя"
+        style={{
+          width: '36px',
+          height: '36px',
+          padding: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  )
+
   return (
     <div className="container page-shell">
       <section className="page-hero page-hero--admin">
@@ -257,7 +314,7 @@ function AdminPage() {
         </div>
 
         {/* Таблица */}
-        <div className="table-container" style={{
+        <div className="table-container admin-users-table" style={{
           borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
           border: '1px solid var(--border-color)'
@@ -306,58 +363,7 @@ function AdminPage() {
                     )}
                   </td>
                   <td>
-                    <div className="table-actions" style={{ flexWrap: 'wrap', gap: '0.375rem' }}>
-                      <ActionIconButton title="Редактировать профиль" onClick={() => openEditModal(user)}>
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.586 3.586a2 2 0 112.828 2.828L11.5 14.328 8 15l.672-3.5 7.914-7.914z" />
-                        </svg>
-                      </ActionIconButton>
-                      <ActionIconButton title="Сменить пароль" onClick={() => openPasswordModal(user)}>
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a5 5 0 00-9.584 2H4a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-1m4-10l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                      </ActionIconButton>
-                      <ActionIconButton title="Назначить роли" onClick={() => openRolesModal(user)}>
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 0c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5zm6 1.5l2 2 3-4" />
-                        </svg>
-                      </ActionIconButton>
-                      <button 
-                        type="button"
-                        className="btn btn-sm" 
-                        onClick={() => handleBlock(user.id, !user.is_deleted)}
-                        title={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
-                        aria-label={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
-                        style={{
-                          background: user.is_deleted 
-                            ? 'linear-gradient(135deg, #28a745, #34d058)'
-                            : 'linear-gradient(135deg, #ffc107, #ffdb73)',
-                          color: user.is_deleted ? 'white' : '#333',
-                          border: 'none'
-                        }}
-                      >
-                        {user.is_deleted ? 'Разблокировать' : 'Блок'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(user.id)}
-                        title="Удалить пользователя"
-                        aria-label="Удалить пользователя"
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          padding: 0,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                    {renderUserActions(user)}
                   </td>
                 </tr>
               ))}
@@ -366,6 +372,51 @@ function AdminPage() {
           {users.length === 0 && (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--ttk-gray-light)' }}>
               <p>Пользователи не найдены</p>
+            </div>
+          )}
+        </div>
+
+        <div className="admin-users-mobile">
+          {users.length > 0 ? (
+            users.map(user => (
+              <article key={`mobile-${user.id}`} className="admin-user-card">
+                <div className="admin-user-card__header">
+                  <div>
+                    <div className="admin-user-card__login">{user.login}</div>
+                    <div className="admin-user-card__fio">{user.fio}</div>
+                  </div>
+                  <span className={`status-badge ${user.is_deleted ? 'status-completed' : 'status-new'}`}>
+                    {getUserStateLabel(user)}
+                  </span>
+                </div>
+
+                <div className="admin-user-card__meta">
+                  <div>
+                    <span className="admin-user-card__label">Роли</span>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                      {user.roles.map(role => (
+                        <span key={`mobile-role-${user.id}-${role.id}`} className="status-badge status-new">
+                          {role.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="admin-user-card__label">Дата регистрации</span>
+                    <div className="admin-user-card__value">
+                      {new Date(user.created_at).toLocaleDateString('ru-RU')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-user-card__actions">
+                  {renderUserActions(user)}
+                </div>
+              </article>
+            ))
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--ttk-gray-light)' }}>
+              Пользователи не найдены
             </div>
           )}
         </div>

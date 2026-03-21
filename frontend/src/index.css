@@ -209,6 +209,8 @@ select {
   color: var(--ttk-gray);
   font-size: 0.86rem;
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .hero-chip--live {
@@ -581,6 +583,7 @@ select {
   border-bottom: 1px solid rgba(229, 39, 19, 0.08);
   text-align: left;
   vertical-align: top;
+  word-break: break-word;
 }
 
 .table th {
@@ -922,6 +925,13 @@ select {
   min-width: 0;
 }
 
+.player-page-grid > *,
+.host-layout > *,
+.surface-card > *,
+.filters > * {
+  min-width: 0;
+}
+
 .monitor-volume {
   display: flex;
   align-items: center;
@@ -963,6 +973,63 @@ select {
   color: var(--ttk-gray);
   font-size: 0.92rem;
   font-weight: 700;
+}
+
+.admin-users-mobile {
+  display: none;
+}
+
+.admin-user-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(229, 39, 19, 0.1);
+  background: rgba(255, 252, 250, 0.92);
+  box-shadow: 0 10px 24px rgba(87, 43, 32, 0.06);
+}
+
+.admin-user-card__header,
+.admin-user-card__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.admin-user-card__meta {
+  flex-wrap: wrap;
+}
+
+.admin-user-card__login {
+  font-family: 'PT Sans Caption', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-user-card__fio {
+  margin-top: 0.25rem;
+  color: var(--ttk-gray);
+  overflow-wrap: anywhere;
+}
+
+.admin-user-card__label {
+  display: inline-block;
+  color: var(--ttk-gray-light);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-user-card__value {
+  margin-top: 0.35rem;
+  color: var(--ttk-black);
+}
+
+.admin-user-card__actions .table-actions {
+  gap: 0.5rem;
 }
 
 .upload-zone {
@@ -1103,30 +1170,46 @@ select {
 
 @media (max-width: 780px) {
   .navbar-content {
-    grid-template-columns: 1fr;
-    justify-items: stretch;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
     gap: 0.75rem;
   }
 
   .navbar-menu {
-    justify-self: start;
+    justify-self: end;
     overflow-x: auto;
     flex-wrap: nowrap;
-    width: 100%;
-    padding-bottom: 0.2rem;
+    width: min(100%, 15rem);
+    padding: 0.15rem 0 0.2rem;
+    margin-left: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.25rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x;
+  }
+
+  .navbar-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .nav-link.active {
+    box-shadow: none;
   }
 
   .user-info {
-    justify-self: stretch;
-    justify-content: space-between;
+    justify-self: end;
+    gap: 0.45rem;
   }
 
   .navbar-user-copy {
-    text-align: left;
-  }
-
-  .user-roles {
-    justify-content: flex-start;
+    display: none;
   }
 
   .container {
@@ -1155,6 +1238,11 @@ select {
     flex-direction: column;
   }
 
+  .player-btn {
+    align-self: center;
+    order: -1;
+  }
+
   .volume-control {
     min-width: 0;
     width: 100%;
@@ -1164,27 +1252,62 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .table {
-    min-width: 680px;
+  .admin-users-table {
+    display: none;
+  }
+
+  .admin-users-mobile {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .admin-user-card__header {
+    align-items: flex-start;
+  }
+
+  .admin-user-card__actions .table-actions > * {
+    flex: 1 1 calc(50% - 0.25rem);
+  }
+
+  .admin-user-card__actions .table-actions button[title='Удалить пользователя'] {
+    flex: 0 0 2.25rem;
+  }
+
+  .table-actions {
+    justify-content: stretch;
   }
 
   .modal-actions,
-  .surface-card__actions,
-  .table-actions {
+  .surface-card__actions {
     justify-content: stretch;
   }
 }
 
 @media (max-width: 560px) {
-  .nav-link span,
-  .navbar-user-copy {
+  .navbar-brand img {
+    height: 2.35rem;
+  }
+
+  .navbar-content {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .user-info {
     display: none;
+  }
+
+  .navbar-menu {
+    width: min(100%, 12.75rem);
   }
 
   .nav-link {
     min-width: 2.8rem;
     justify-content: center;
     padding-inline: 0.85rem;
+  }
+
+  .nav-link span {
+    display: none;
   }
 
   .page-hero__actions .btn,

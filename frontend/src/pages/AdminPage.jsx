@@ -11,30 +11,6 @@ const ROLE_KEY_BY_NAME = {
   Администратор: 'admin',
 }
 
-
-function ActionIconButton({ title, onClick, children }) {
-  return (
-    <button
-      type="button"
-      className="btn btn-outline btn-sm"
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      style={{
-        width: '36px',
-        height: '36px',
-        padding: 0,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-
 function AdminPage() {
   const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
@@ -129,16 +105,6 @@ function AdminPage() {
     }
   }
 
-  const handleBlock = async (userId, nextDeletedState) => {
-    try {
-      await adminService.updateUser(userId, { is_deleted: nextDeletedState })
-      await loadUsers()
-      setNotice(null)
-    } catch (error) {
-      setNotice({ type: 'error', text: t('admin.changeStatusError') })
-    }
-  }
-
   const handleSubmit = async () => {
     setLoading(true)
     try {
@@ -199,36 +165,14 @@ function AdminPage() {
 
   const renderUserActions = (user) => (
     <div className="table-actions" style={{ flexWrap: 'wrap', gap: '0.375rem' }}>
-      <ActionIconButton title={t('admin.edit')} onClick={() => openEditModal(user)}>
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.586 3.586a2 2 0 112.828 2.828L11.5 14.328 8 15l.672-3.5 7.914-7.914z" />
-        </svg>
-      </ActionIconButton>
-      <ActionIconButton title={t('admin.changePassword')} onClick={() => openPasswordModal(user)}>
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a5 5 0 00-9.584 2H4a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-1m4-10l-3 3m0 0l-3-3m3 3V4" />
-        </svg>
-      </ActionIconButton>
-      <ActionIconButton title={t('admin.assignRoles')} onClick={() => openRolesModal(user)}>
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h8a2 2 0 012 2v2h2a2 2 0 012 2v8a2 2 0 01-2 2h-6l-3 2v-2H6a2 2 0 01-2-2V6zm4 3h4m-4 4h4m5 1l1.5 1.5L18 12" />
-        </svg>
-      </ActionIconButton>
-      <button
-        type="button"
-        className="btn btn-sm"
-        onClick={() => handleBlock(user.id, !user.is_deleted)}
-        title={user.is_deleted ? t('admin.unblock') : t('admin.block')}
-        aria-label={user.is_deleted ? t('admin.unblock') : t('admin.block')}
-        style={{
-          background: user.is_deleted
-            ? 'linear-gradient(135deg, #28a745, #34d058)'
-            : 'linear-gradient(135deg, #ffc107, #ffdb73)',
-          color: user.is_deleted ? 'white' : '#171111',
-          border: 'none'
-        }}
-      >
-        {user.is_deleted ? t('admin.unblock') : t('admin.block')}
+      <button type="button" className="btn btn-outline btn-sm" onClick={() => openEditModal(user)}>
+        {t('admin.edit')}
+      </button>
+      <button type="button" className="btn btn-outline btn-sm" onClick={() => openPasswordModal(user)}>
+        {t('admin.changePassword')}
+      </button>
+      <button type="button" className="btn btn-outline btn-sm" onClick={() => openRolesModal(user)}>
+        {t('admin.assignRoles')}
       </button>
       <button
         type="button"
@@ -236,18 +180,8 @@ function AdminPage() {
         onClick={() => handleDelete(user.id)}
         title={t('admin.deleteUser')}
         aria-label={t('admin.deleteUser')}
-        style={{
-          width: '36px',
-          height: '36px',
-          padding: 0,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
       >
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
+        {t('admin.deleteUser')}
       </button>
     </div>
   )

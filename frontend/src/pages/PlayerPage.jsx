@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
+import MessagesList from '../components/MessagesList'
 import StatusBanner from '../components/StatusBanner'
-import { getLocale, useLanguage } from '../hooks/useLanguage'
+import { useLanguage } from '../hooks/useLanguage'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useLiveAudioStream } from '../hooks/useLiveAudioStream'
 import { playerService } from '../services'
@@ -45,9 +46,7 @@ function waitForVideoMetadata(video) {
 }
 
 function PlayerPage() {
-  const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
-  const locale = getLocale(language)
 
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState([])
@@ -69,6 +68,13 @@ function PlayerPage() {
   const playerCardRef = useRef(null)
   const [liveMicHintVisible, setLiveMicHintVisible] = useState(false)
   const [communicationHeight, setCommunicationHeight] = useState(null)
+
+  const buildCommunicationItems = (textMessages, voiceMessages) => (
+    [
+      ...(textMessages || []).map(message => ({ ...message, message_type: 'text' })),
+      ...(voiceMessages || []).map(message => ({ ...message, message_type: 'voice' })),
+    ].sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
+  )
 
   const {
     audioRef: mediaRef,
@@ -227,18 +233,17 @@ function PlayerPage() {
 
   const loadMessages = async () => {
     try {
-      const data = await playerService.getMessages()
-      setMessages(data.filter(msg => msg.status !== 'completed'))
+      const [textMessages, voiceMessages] = await Promise.all([
+        playerService.getMessages(),
+        playerService.getVoiceMessages(),
+      ])
+      setMessages(buildCommunicationItems(
+        textMessages.filter(msg => msg.status !== 'completed'),
+        voiceMessages,
+      ))
     } catch (error) {
       console.error('Messages error:', error)
     }
-  }
-
-  const getMessageStatusText = (status) => {
-    if (status === 'new') return t('messageStatus.new')
-    if (status === 'in_progress') return t('messageStatus.inProgress')
-    if (status === 'completed') return t('messageStatus.completed')
-    return status
   }
 
   const showMicrophoneAccessNotice = () => {
@@ -696,35 +701,7 @@ function PlayerPage() {
                 {t('player.messages')}
               </h3>
               <div className="player-chat-feed">
-                {messages.length > 0 ? (
-                  messages.map(msg => (
-                    <div
-                      key={msg.id}
-                      style={{
-                        padding: '1rem',
-                        background: 'var(--player-message-card-bg)',
-                        border: '1px solid var(--player-message-card-border)',
-                        borderLeft: msg.status === 'new' ? '4px solid var(--ttk-red)' : '4px solid transparent',
-                        borderRadius: 'var(--radius)',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem', lineHeight: 1.5, color: 'var(--page-text)' }}>{msg.text}</p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className={`status-badge status-${msg.status}`}>
-                          {getMessageStatusText(msg.status)}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'PT Sans Caption, sans-serif' }}>
-                          {new Date(msg.created_at).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    <p style={{ fontSize: '0.85rem' }}>{t('player.noMessages')}</p>
-                  </div>
-                )}
+                <MessagesList messages={messages} />
               </div>
             </div>
           </div>

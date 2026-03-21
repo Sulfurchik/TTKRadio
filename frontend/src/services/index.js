@@ -85,6 +85,11 @@ export const playerService = {
     return response.data
   },
 
+  getVoiceMessages: async () => {
+    const response = await api.get('/player/voice-messages')
+    return response.data
+  },
+
   getBroadcastStatus: async () => {
     const response = await api.get('/player/broadcast-status')
     return response.data
@@ -235,6 +240,11 @@ export const hostService = {
 
   getArchivedMessages: async () => {
     const response = await api.get('/host/messages/archive')
+    return response.data
+  },
+
+  getVoiceMessages: async () => {
+    const response = await api.get('/host/voice-messages')
     return response.data
   },
 

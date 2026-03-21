@@ -506,6 +506,10 @@ class BackendSmokeTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
 
+        status, payload = self.request("GET", "/api/player/voice-messages", headers=listener_headers)
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(len(payload), 1)
+
         status, payload = self.request("GET", "/api/host/voice-messages", headers=host_headers)
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload), 1)

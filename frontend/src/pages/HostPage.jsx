@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import FileUpload from '../components/FileUpload'
 import MessagesList from '../components/MessagesList'
 import StatusBanner from '../components/StatusBanner'
-import { getLocale, useLanguage } from '../hooks/useLanguage'
+import { useLanguage } from '../hooks/useLanguage'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useAuthStore } from '../store/authStore'
 import { hostService } from '../services'
@@ -50,7 +50,6 @@ function HostPage() {
   const { user } = useAuthStore()
   const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
-  const locale = getLocale(language)
   const [media, setMedia] = useState([])
   const [playlists, setPlaylists] = useState([])
   const [messages, setMessages] = useState([])
@@ -70,6 +69,13 @@ function HostPage() {
   const [isLiveMicConnecting, setIsLiveMicConnecting] = useState(false)
   const [editingMediaId, setEditingMediaId] = useState(null)
   const [editingMediaName, setEditingMediaName] = useState('')
+
+  const buildCommunicationItems = (textMessages, voiceMessages) => (
+    [
+      ...(textMessages || []).map(message => ({ ...message, message_type: 'text' })),
+      ...(voiceMessages || []).map(message => ({ ...message, message_type: 'voice' })),
+    ].sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
+  )
 
   const mediaRecorderRef = useRef(null)
   const mediaStreamRef = useRef(null)
@@ -262,10 +268,17 @@ function HostPage() {
 
   const loadMessages = async (archiveMode = showArchive) => {
     try {
-      const data = archiveMode
-        ? await hostService.getArchivedMessages()
-        : await hostService.getMessages()
-      setMessages(data)
+      if (archiveMode) {
+        const data = await hostService.getArchivedMessages()
+        setMessages(data.map(message => ({ ...message, message_type: 'text' })))
+        return
+      }
+
+      const [textMessages, voiceMessages] = await Promise.all([
+        hostService.getMessages(),
+        hostService.getVoiceMessages(),
+      ])
+      setMessages(buildCommunicationItems(textMessages, voiceMessages))
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error)
     }

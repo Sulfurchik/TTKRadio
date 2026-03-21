@@ -135,6 +135,21 @@ async def send_voice_message(
     return serialize_voice_message(result.scalar_one())
 
 
+@router.get("/voice-messages", response_model=list[VoiceMessageResponse])
+async def get_user_voice_messages(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(VoiceMessage)
+        .where(VoiceMessage.user_id == current_user.id)
+        .options(selectinload(VoiceMessage.user))
+        .order_by(VoiceMessage.created_at.desc(), VoiceMessage.id.desc())
+        .limit(100)
+    )
+    return [serialize_voice_message(message) for message in result.scalars().all()]
+
+
 @router.get("/broadcast-status", response_model=BroadcastStatusResponse)
 async def get_broadcast_status(
     current_user: User = Depends(get_current_user),

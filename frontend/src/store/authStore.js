@@ -1,14 +1,15 @@
 import { create } from 'zustand'
 import { authService } from '../services'
 
-export const useAuthStore = create((set, get) => ({
+export const useAuthStore = create((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
   isLoading: true,
 
   login: async (login, password) => {
-    const data = await authService.login(login, password)
+    const normalizedLogin = login.trim()
+    const data = await authService.login(normalizedLogin, password)
     localStorage.setItem('token', data.access_token)
     localStorage.setItem('user', JSON.stringify(data.user))
     set({
@@ -37,27 +38,28 @@ export const useAuthStore = create((set, get) => ({
 
   checkAuth: async () => {
     const token = localStorage.getItem('token')
-    const userStr = localStorage.getItem('user')
-    
+
     if (!token) {
-      set({ isLoading: false })
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
       return
     }
 
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        set({ user, isAuthenticated: true, isLoading: false })
-        return
-      } catch (e) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      }
-    }
+    set({ token, isLoading: true })
 
     try {
       const user = await authService.getMe()
-      set({ user, isAuthenticated: true, isLoading: false })
+      localStorage.setItem('user', JSON.stringify(user))
+      set({
+        user,
+        token,
+        isAuthenticated: true,
+        isLoading: false,
+      })
     } catch (error) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')

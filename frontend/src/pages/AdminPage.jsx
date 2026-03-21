@@ -69,7 +69,7 @@ function AdminPage() {
       const data = await adminService.getUsers(activeFilters)
       setUsers(data)
     } catch (error) {
-      console.error('Ошибка загрузки пользователей:', error)
+      setNotice({ type: 'error', text: t('admin.loadUsersError') })
     }
   }
 
@@ -78,7 +78,7 @@ function AdminPage() {
       const data = await adminService.getRoles()
       setRoles(data)
     } catch (error) {
-      console.error('Ошибка загрузки ролей:', error)
+      setNotice({ type: 'error', text: t('admin.loadRolesError') })
     }
   }
 
@@ -316,6 +316,24 @@ function AdminPage() {
                 <option key={role.id} value={role.id}>{getRoleLabel(role.name)}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="form-label">{t('admin.dateFrom')}</label>
+            <input
+              type="date"
+              className="form-input"
+              value={filters.date_from || ''}
+              onChange={e => handleFilterChange('date_from', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="form-label">{t('admin.dateTo')}</label>
+            <input
+              type="date"
+              className="form-input"
+              value={filters.date_to || ''}
+              onChange={e => handleFilterChange('date_to', e.target.value)}
+            />
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
             <button className="btn btn-primary" onClick={applyFilters}>

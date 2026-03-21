@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthToolbar from '../components/AuthToolbar'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
 import loginLogo from '../assets/login-logo.svg'
@@ -18,7 +19,7 @@ function LoginPage() {
     setLoading(true)
 
     try {
-      await login(formData.login, formData.password)
+      await login(formData.login.trim(), formData.password)
       navigate('/')
     } catch (err) {
       setError(err.response?.data?.detail || t('auth.loginError'))
@@ -29,6 +30,9 @@ function LoginPage() {
 
   return (
     <div className="auth-page">
+      <div className="auth-page__controls">
+        <AuthToolbar />
+      </div>
       <div className="auth-card">
         {/* Логотип ТТК */}
         <div style={{ 

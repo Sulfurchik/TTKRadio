@@ -28,6 +28,8 @@ export const adminService = {
     if (filters.login) params.append('login', filters.login)
     if (filters.fio) params.append('fio', filters.fio)
     if (filters.role_id) params.append('role_id', filters.role_id)
+    if (filters.date_from) params.append('date_from', `${filters.date_from}T00:00:00`)
+    if (filters.date_to) params.append('date_to', `${filters.date_to}T23:59:59`)
     const response = await api.get(`/admin/users?${params}`)
     return response.data
   },
@@ -126,6 +128,11 @@ export const hostService = {
     return response.data
   },
 
+  deleteItemFromPlaylist: async (playlistId, itemId) => {
+    const response = await api.delete(`/host/playlists/${playlistId}/items/${itemId}`)
+    return response.data
+  },
+
   deletePlaylist: async (playlistId) => {
     const response = await api.delete(`/host/playlists/${playlistId}`)
     return response.data
@@ -176,6 +183,11 @@ export const hostService = {
 
   setCurrentMedia: async (mediaId) => {
     const response = await api.put('/host/broadcast/current-media', { media_id: mediaId })
+    return response.data
+  },
+
+  updateBroadcastVolume: async (volume) => {
+    const response = await api.put('/host/broadcast/volume', { volume })
     return response.data
   },
 

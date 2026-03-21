@@ -4,7 +4,7 @@ import StatusBanner from '../components/StatusBanner'
 import { getLocale, useLanguage } from '../hooks/useLanguage'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { playerService } from '../services'
-import { formatPlaybackTime } from '../utils/broadcastSync'
+import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
 import { getMediaDisplayName } from '../utils/media'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
@@ -27,9 +27,10 @@ function PlayerPage() {
   const mediaStreamRef = useRef(null)
   const audioChunksRef = useRef([])
   const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' })
+  const videoRef = useRef(null)
 
   const {
-    audioRef,
+    audioRef: mediaRef,
     broadcastStatus,
     currentTrack,
     playbackSeconds,
@@ -59,6 +60,49 @@ function PlayerPage() {
       stopMediaStream(mediaStreamRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) {
+      return undefined
+    }
+
+    if (currentTrack?.file_type !== 'video' || !currentTrack?.storage_url) {
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+      return undefined
+    }
+
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const absoluteSource = new URL(currentTrack.storage_url, window.location.origin).toString()
+    if (video.src !== absoluteSource) {
+      video.src = currentTrack.storage_url
+      video.load()
+    }
+
+    const targetPosition = getSyncedPositionSeconds(broadcastStatus)
+    if (Math.abs((video.currentTime || 0) - targetPosition) > SYNC_TOLERANCE_SECONDS) {
+      try {
+        video.currentTime = targetPosition
+      } catch (error) {
+        console.debug('Не удалось синхронизировать видеопоток', error)
+      }
+    }
+
+    video.muted = true
+
+    if (broadcastStatus?.is_broadcasting && isAudioPlaying) {
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+    }
+
+    return undefined
+  }, [broadcastStatus, currentTrack, isAudioPlaying])
 
   const loadMessages = async () => {
     try {
@@ -189,7 +233,7 @@ function PlayerPage() {
 
   return (
     <div className="container page-shell">
-      <audio ref={audioRef} preload="auto" />
+      <audio ref={mediaRef} preload="auto" />
 
       <section className="page-hero page-hero--player">
         <div className="page-hero__content">
@@ -223,10 +267,10 @@ function PlayerPage() {
                     alignItems: 'center',
                     gap: '0.75rem',
                     padding: '0.5rem 1rem',
-                    background: 'rgba(229, 39, 19, 0.15)',
+                    background: 'var(--player-live-badge-bg)',
                     backdropFilter: 'blur(20px)',
                     borderRadius: '20px',
-                    border: '1px solid rgba(229, 39, 19, 0.3)',
+                    border: '1px solid var(--player-live-badge-border)',
                   }}
                 >
                   <span className="recording-dot"></span>
@@ -251,39 +295,55 @@ function PlayerPage() {
           </div>
 
           <div className="player">
-            <div
-              className="player-cover"
-              style={{
-                animation: isAudioPlaying ? 'pulse-glow 2s ease-in-out infinite' : 'none',
-                opacity: isBuffering ? 0.7 : 1,
-                transition: 'opacity 0.3s ease',
-              }}
-            >
-              {isBuffering && canPlay && (
-                <div
+            {currentTrack?.file_type === 'video' ? (
+              <div className="video-container">
+                <video
+                  ref={videoRef}
+                  className="video-player"
+                  playsInline
+                  preload="auto"
+                  controls={false}
                   style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '40px',
-                    height: '40px',
-                    border: '4px solid rgba(255,255,255,0.3)',
-                    borderTopColor: 'white',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
+                    opacity: isBuffering ? 0.7 : 1,
+                    transition: 'opacity 0.3s ease',
                   }}
-                ></div>
-              )}
-              <svg width="80" height="80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
                 />
-              </svg>
-            </div>
+              </div>
+            ) : (
+              <div
+                className="player-cover"
+                style={{
+                  animation: isAudioPlaying ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+                  opacity: isBuffering ? 0.7 : 1,
+                  transition: 'opacity 0.3s ease',
+                }}
+              >
+                {isBuffering && canPlay && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '40px',
+                      height: '40px',
+                      border: '4px solid rgba(255,255,255,0.3)',
+                      borderTopColor: 'white',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  ></div>
+                )}
+                <svg width="80" height="80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                  />
+                </svg>
+              </div>
+            )}
 
             <div className="player-controls">
               <button
@@ -348,8 +408,8 @@ function PlayerPage() {
                 style={{
                   textAlign: 'center',
                   padding: '1.25rem',
-                  background: 'linear-gradient(135deg, rgba(229, 39, 19, 0.05), transparent)',
-                  borderTop: '1px solid rgba(229, 39, 19, 0.1)',
+                  background: 'var(--player-track-bg)',
+                  borderTop: '1px solid var(--player-track-border)',
                   width: '100%',
                 }}
               >
@@ -472,8 +532,8 @@ function PlayerPage() {
                       key={msg.id}
                       style={{
                         padding: '1rem',
-                        background: 'var(--muted-bg, #f8f9fa)',
-                        border: '1px solid rgba(229, 39, 19, 0.12)',
+                        background: 'var(--player-message-card-bg)',
+                        border: '1px solid var(--player-message-card-border)',
                         borderLeft: msg.status === 'new' ? '4px solid var(--ttk-red)' : '4px solid transparent',
                         borderRadius: 'var(--radius)',
                         transition: 'all 0.2s',

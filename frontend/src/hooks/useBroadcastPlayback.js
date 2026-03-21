@@ -80,6 +80,16 @@ export function useBroadcastPlayback({
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
 
+  const applyAudioVolume = (audio, status) => {
+    if (!audio) {
+      return
+    }
+
+    const broadcastVolume = typeof status?.volume === 'number' ? status.volume : 1
+    const effectiveVolume = Math.max(0, Math.min(1, volume * broadcastVolume))
+    audio.volume = effectiveVolume
+  }
+
   const syncAudioElement = async (status, options = {}) => {
     const audio = audioRef.current
     if (!audio || !status?.current_media) {
@@ -98,7 +108,7 @@ export function useBroadcastPlayback({
       audio.load()
     }
 
-    audio.volume = volume
+    applyAudioVolume(audio, status)
 
     if (hasSourceChanged || audio.readyState < 1) {
       setIsBuffering(true)
@@ -242,7 +252,7 @@ export function useBroadcastPlayback({
       return undefined
     }
 
-    audio.volume = volume
+    applyAudioVolume(audio, currentStatusRef.current)
     return undefined
   }, [volume])
 

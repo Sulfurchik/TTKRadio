@@ -87,6 +87,7 @@ const translations = {
       description: 'Управление эфиром, плейлистами и сообщениями слушателей.',
       onAir: 'В эфире',
       broadcastStopped: 'Эфир остановлен',
+      broadcastVolume: 'Громкость эфира',
       playlist: 'Плейлист',
       monitoring: 'Мониторинг',
       startBroadcast: 'Начать вещание',
@@ -134,12 +135,16 @@ const translations = {
       uploadError: 'Не удалось загрузить файл в медиатеку.',
       deleteFileError: 'Не удалось удалить файл из медиатеки.',
       deletePlaylistError: 'Не удалось удалить плейлист.',
+      deleteTrack: 'Удалить из плейлиста',
+      deleteTrackConfirm: 'Удалить трек из плейлиста?',
+      deleteTrackError: 'Не удалось удалить трек из плейлиста.',
       deleteFileConfirm: 'Удалить файл?',
       deletePlaylistConfirm: 'Удалить плейлист?',
       createPlaylistPrompt: 'Введите название плейлиста, прежде чем создавать его.',
       createPlaylistError: 'Не удалось создать плейлист.',
       selectPlaylistFirst: 'Сначала выберите плейлист слева, а потом добавляйте в него треки.',
       addTrackError: 'Не удалось добавить трек в плейлист.',
+      volumeUpdateError: 'Не удалось обновить громкость эфира.',
       activatePlaylistError: 'Не удалось активировать выбранный плейлист.',
       startBroadcastError: 'Не удалось запустить вещание.',
       stopBroadcastError: 'Не удалось остановить эфир.',
@@ -172,6 +177,8 @@ const translations = {
       save: 'Сохранить',
       cancel: 'Отмена',
       registrationDate: 'Дата регистрации',
+      dateFrom: 'Дата с',
+      dateTo: 'Дата по',
       allRoles: 'Все роли',
       noUsers: 'Пользователи не найдены',
       editUser: 'Редактирование пользователя',
@@ -297,6 +304,7 @@ const translations = {
       description: 'Manage broadcast, playlists and listener messages.',
       onAir: 'On air',
       broadcastStopped: 'Broadcast stopped',
+      broadcastVolume: 'Broadcast volume',
       playlist: 'Playlist',
       monitoring: 'Monitoring',
       startBroadcast: 'Start broadcast',
@@ -344,12 +352,16 @@ const translations = {
       uploadError: 'Failed to upload the file to the media library.',
       deleteFileError: 'Failed to delete the file from the media library.',
       deletePlaylistError: 'Failed to delete the playlist.',
+      deleteTrack: 'Remove from playlist',
+      deleteTrackConfirm: 'Remove this track from the playlist?',
+      deleteTrackError: 'Failed to remove the track from the playlist.',
       deleteFileConfirm: 'Delete file?',
       deletePlaylistConfirm: 'Delete playlist?',
       createPlaylistPrompt: 'Enter a playlist name before creating it.',
       createPlaylistError: 'Failed to create the playlist.',
       selectPlaylistFirst: 'Select a playlist first, then add tracks to it.',
       addTrackError: 'Failed to add the track to the playlist.',
+      volumeUpdateError: 'Failed to update the broadcast volume.',
       activatePlaylistError: 'Failed to activate the selected playlist.',
       startBroadcastError: 'Failed to start broadcasting.',
       stopBroadcastError: 'Failed to stop broadcasting.',
@@ -382,6 +394,8 @@ const translations = {
       save: 'Save',
       cancel: 'Cancel',
       registrationDate: 'Registration date',
+      dateFrom: 'Date from',
+      dateTo: 'Date to',
       allRoles: 'All roles',
       noUsers: 'No users found',
       editUser: 'Edit user',
@@ -451,11 +465,11 @@ export const useLanguage = create((set, get) => ({
   t: (path) => {
     const currentLanguage = get().language
     const translated = resolveTranslation(currentLanguage, path)
-    if (typeof translated === 'string') {
+    if (translated !== undefined) {
       return translated
     }
     const fallback = resolveTranslation('ru', path)
-    return typeof fallback === 'string' ? fallback : path
+    return fallback !== undefined ? fallback : path
   },
 }))
 

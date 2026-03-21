@@ -38,6 +38,27 @@
   --page-text: var(--ttk-black);
   --filter-bg: rgba(255, 247, 244, 0.62);
   --muted-bg: rgba(255, 255, 255, 0.5);
+  --panel-header-bg: linear-gradient(135deg, rgba(229, 39, 19, 0.08), rgba(255, 255, 255, 0.72));
+  --panel-header-border: rgba(229, 39, 19, 0.1);
+  --soft-panel-bg: rgba(255, 247, 243, 0.72);
+  --soft-panel-border: rgba(229, 39, 19, 0.08);
+  --table-bg: rgba(255, 255, 255, 0.65);
+  --table-header-bg: rgba(255, 246, 243, 0.95);
+  --table-row-hover: rgba(255, 245, 241, 0.7);
+  --admin-card-bg: rgba(255, 252, 250, 0.92);
+  --player-shell-bg:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(255, 245, 241, 0.82)),
+    radial-gradient(circle at top, rgba(229, 39, 19, 0.08), transparent 60%);
+  --player-controls-bg: rgba(255, 255, 255, 0.72);
+  --player-controls-border: rgba(229, 39, 19, 0.12);
+  --player-track-bg: linear-gradient(135deg, rgba(229, 39, 19, 0.05), transparent);
+  --player-track-border: rgba(229, 39, 19, 0.1);
+  --player-live-badge-bg: rgba(229, 39, 19, 0.15);
+  --player-live-badge-border: rgba(229, 39, 19, 0.3);
+  --player-message-card-bg: rgba(255, 255, 255, 0.52);
+  --player-message-card-border: rgba(229, 39, 19, 0.12);
+  --auth-toolbar-bg: rgba(255, 255, 255, 0.72);
+  --auth-toolbar-border: rgba(229, 39, 19, 0.12);
 }
 
 /* Темная тема - переменные */
@@ -60,6 +81,27 @@ html[data-theme="dark"] {
   --page-text: #f6ebe7;
   --filter-bg: rgba(38, 28, 33, 0.78);
   --muted-bg: rgba(255, 255, 255, 0.05);
+  --panel-header-bg: linear-gradient(135deg, rgba(229, 39, 19, 0.14), rgba(255, 102, 87, 0.05));
+  --panel-header-border: rgba(255, 126, 109, 0.26);
+  --soft-panel-bg: rgba(24, 19, 18, 0.94);
+  --soft-panel-border: rgba(255, 126, 109, 0.18);
+  --table-bg: rgba(25, 19, 18, 0.84);
+  --table-header-bg: rgba(34, 24, 23, 0.92);
+  --table-row-hover: rgba(48, 34, 31, 0.82);
+  --admin-card-bg: rgba(29, 21, 20, 0.88);
+  --player-shell-bg:
+    linear-gradient(160deg, rgba(34, 25, 24, 0.96), rgba(22, 17, 16, 0.92)),
+    radial-gradient(circle at top, rgba(229, 39, 19, 0.16), transparent 60%);
+  --player-controls-bg: rgba(24, 19, 18, 0.94);
+  --player-controls-border: rgba(255, 126, 109, 0.18);
+  --player-track-bg: linear-gradient(135deg, rgba(229, 39, 19, 0.12), rgba(255, 255, 255, 0.02));
+  --player-track-border: rgba(255, 126, 109, 0.18);
+  --player-live-badge-bg: rgba(89, 38, 32, 0.52);
+  --player-live-badge-border: rgba(255, 126, 109, 0.26);
+  --player-message-card-bg: rgba(33, 24, 23, 0.86);
+  --player-message-card-border: rgba(255, 126, 109, 0.18);
+  --auth-toolbar-bg: rgba(29, 21, 20, 0.78);
+  --auth-toolbar-border: rgba(255, 126, 109, 0.18);
 }
 
 /* Заголовки белые в темной теме */
@@ -564,8 +606,8 @@ select {
 }
 
 .surface-panel-header {
-  background: linear-gradient(135deg, rgba(229, 39, 19, 0.08), rgba(255, 255, 255, 0.72));
-  border-bottom: 1px solid rgba(229, 39, 19, 0.1);
+  background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--panel-header-border);
 }
 
 .card-title {
@@ -707,8 +749,8 @@ select {
   gap: 1rem;
   padding: 1rem;
   border-radius: 22px;
-  background: rgba(255, 247, 244, 0.62);
-  border: 1px solid rgba(229, 39, 19, 0.08);
+  background: var(--soft-panel-bg);
+  border: 1px solid var(--soft-panel-border);
 }
 
 .table-container {
@@ -721,7 +763,7 @@ select {
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--table-bg);
 }
 
 .table th,
@@ -740,11 +782,11 @@ select {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ttk-gray);
-  background: rgba(255, 246, 243, 0.95);
+  background: var(--table-header-bg);
 }
 
 .table tbody tr:hover {
-  background: rgba(255, 245, 241, 0.7);
+  background: var(--table-row-hover);
 }
 
 .table-actions {
@@ -866,7 +908,27 @@ select {
   min-height: 100vh;
   display: grid;
   place-items: center;
+  position: relative;
   padding: 1.5rem;
+}
+
+.auth-page__controls {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 3;
+}
+
+.auth-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem;
+  border: 1px solid var(--auth-toolbar-border);
+  border-radius: 999px;
+  background: var(--auth-toolbar-bg);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-sm);
 }
 
 .auth-card {
@@ -929,9 +991,7 @@ select {
   align-items: center;
   gap: 1.4rem;
   padding: 2rem 1.5rem 1.6rem;
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(255, 245, 241, 0.82)),
-    radial-gradient(circle at top, rgba(229, 39, 19, 0.08), transparent 60%);
+  background: var(--player-shell-bg);
   overflow: hidden;
 }
 
@@ -980,8 +1040,8 @@ select {
   width: 100%;
   padding: 1rem 1.1rem;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(229, 39, 19, 0.12);
+  background: var(--player-controls-bg);
+  border: 1px solid var(--player-controls-border);
   flex-wrap: wrap;
 }
 
@@ -1087,8 +1147,8 @@ select {
   padding: 0.9rem 1rem;
   margin-top: 0.25rem;
   border-radius: 20px;
-  background: rgba(255, 247, 243, 0.72);
-  border: 1px solid rgba(229, 39, 19, 0.08);
+  background: var(--soft-panel-bg);
+  border: 1px solid var(--soft-panel-border);
 }
 
 .monitor-summary {
@@ -1132,8 +1192,8 @@ select {
   gap: 0.95rem;
   padding: 1rem;
   border-radius: 20px;
-  border: 1px solid rgba(229, 39, 19, 0.1);
-  background: rgba(255, 252, 250, 0.92);
+  border: 1px solid var(--soft-panel-border);
+  background: var(--admin-card-bg);
   box-shadow: 0 10px 24px rgba(87, 43, 32, 0.06);
 }
 
@@ -1430,6 +1490,16 @@ select {
 }
 
 @media (max-width: 560px) {
+  .auth-page {
+    align-items: start;
+    padding-top: 5rem;
+  }
+
+  .auth-page__controls {
+    top: 0.9rem;
+    right: 0.9rem;
+  }
+
   .navbar-brand img {
     height: 2.35rem;
   }

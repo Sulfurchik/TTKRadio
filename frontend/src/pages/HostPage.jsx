@@ -28,6 +28,7 @@ function HostPage() {
     const savedVolume = localStorage.getItem('host_monitor_volume')
     return savedVolume ? parseFloat(savedVolume) : 0.55
   })
+  const [broadcastVolume, setBroadcastVolume] = useState(1)
 
   const mediaRecorderRef = useRef(null)
   const mediaStreamRef = useRef(null)
@@ -66,6 +67,12 @@ function HostPage() {
   useEffect(() => {
     localStorage.setItem('host_monitor_volume', monitorVolume.toString())
   }, [monitorVolume])
+
+  useEffect(() => {
+    if (typeof broadcastStatus?.volume === 'number') {
+      setBroadcastVolume(broadcastStatus.volume)
+    }
+  }, [broadcastStatus?.volume])
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -200,10 +207,28 @@ function HostPage() {
 
     try {
       await hostService.addItemToPlaylist(selectedPlaylist.id, mediaId)
-      await loadPlaylists()
+      await Promise.all([loadPlaylists(), refreshStatus()])
       setNotice(null)
     } catch (error) {
       setNotice({ type: 'error', text: t('host.addTrackError') })
+    }
+  }
+
+  const handleDeletePlaylistItem = async (itemId) => {
+    if (!selectedPlaylist) {
+      return
+    }
+
+    if (!confirm(t('host.deleteTrackConfirm'))) {
+      return
+    }
+
+    try {
+      await hostService.deleteItemFromPlaylist(selectedPlaylist.id, itemId)
+      await Promise.all([loadPlaylists(), refreshStatus()])
+      setNotice(null)
+    } catch (error) {
+      setNotice({ type: 'error', text: t('host.deleteTrackError') })
     }
   }
 
@@ -319,6 +344,19 @@ function HostPage() {
     const nextArchiveMode = !showArchive
     setShowArchive(nextArchiveMode)
     await loadMessages(nextArchiveMode)
+  }
+
+  const handleBroadcastVolumeChange = async (event) => {
+    const nextVolume = parseFloat(event.target.value)
+    setBroadcastVolume(nextVolume)
+
+    try {
+      await hostService.updateBroadcastVolume(nextVolume)
+      await refreshStatus()
+      setNotice(null)
+    } catch (error) {
+      setNotice({ type: 'error', text: t('host.volumeUpdateError') })
+    }
   }
 
   const showMicrophoneAccessNotice = () => {
@@ -470,6 +508,24 @@ function HostPage() {
           </div>
         )}
 
+        <div className="monitor-volume">
+          <label className="form-label" htmlFor="host-broadcast-volume">{t('host.broadcastVolume')}</label>
+          <div className="volume-control" style={{ borderLeft: 'none', paddingLeft: 0 }}>
+            <input
+              id="host-broadcast-volume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={broadcastVolume}
+              onChange={handleBroadcastVolumeChange}
+              className="volume-slider"
+              aria-label={t('host.broadcastVolume')}
+            />
+            <span className="mono-value">{Math.round(broadcastVolume * 100)}%</span>
+          </div>
+        </div>
+
         <div className="monitor-summary">
           {currentTrack ? (
             <div className="monitor-summary__grid">
@@ -586,32 +642,53 @@ function HostPage() {
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto' }}>
                 {selectedPlaylist.items?.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => handleSelectTrack(item.media_id)}
                     style={{
-                      padding: '0.75rem',
-                      background: currentTrackId === item.media_id
-                        ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.14), rgba(229, 39, 19, 0.06))'
-                        : 'var(--muted-bg)',
-                      border: currentTrackId === item.media_id ? '1px solid var(--ttk-red)' : '1px solid transparent',
-                      borderRadius: 'var(--radius)',
-                      fontSize: '0.85rem',
-                      textAlign: 'left',
-                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'stretch',
+                      gap: '0.5rem',
                     }}
                   >
-                    <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.original_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--ttk-gray-light)' }}>
-                      {formatPlaybackTime(item.duration)}
-                      {currentTrackId === item.media_id && (
-                        <span style={{ marginLeft: '0.5rem', color: 'var(--ttk-red)', fontWeight: 700 }}>
-                          {t('host.nowOnAir')}
-                        </span>
-                      )}
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTrack(item.media_id)}
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        background: currentTrackId === item.media_id
+                          ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.14), rgba(229, 39, 19, 0.06))'
+                          : 'var(--muted-bg)',
+                        border: currentTrackId === item.media_id ? '1px solid var(--ttk-red)' : '1px solid transparent',
+                        borderRadius: 'var(--radius)',
+                        fontSize: '0.85rem',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.original_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--ttk-gray-light)' }}>
+                        {formatPlaybackTime(item.duration)}
+                        {currentTrackId === item.media_id && (
+                          <span style={{ marginLeft: '0.5rem', color: 'var(--ttk-red)', fontWeight: 700 }}>
+                            {t('host.nowOnAir')}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleDeletePlaylistItem(item.id)}
+                      title={t('host.deleteTrack')}
+                      aria-label={t('host.deleteTrack')}
+                      style={{ minWidth: '2.5rem', paddingInline: '0.65rem' }}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

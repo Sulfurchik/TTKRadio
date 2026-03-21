@@ -206,6 +206,11 @@ async def add_item_to_playlist(
     await get_host_media(db, current_user.id, request.media_id)
     await insert_playlist_item(db, playlist.id, request.media_id, request.order)
     playlist.updated_at = datetime.utcnow()
+
+    state = await get_or_create_broadcast_state(db, current_user.id)
+    if state.playlist_id == playlist.id:
+        await sync_broadcast_state(db, state)
+
     await db.commit()
     return await build_playlist_response(db, playlist)
 

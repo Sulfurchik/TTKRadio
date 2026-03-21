@@ -219,6 +219,10 @@ class BackendSmokeTest(unittest.TestCase):
         listener_headers = self.auth_headers(listener_auth["access_token"])
         host_headers = self.auth_headers(host_auth["access_token"])
 
+        status, payload = self.request("GET", "/api/auth/me", headers=host_headers)
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["login"], "hoster")
+
         status, payload = self.request(
             "POST",
             "/api/player/messages",
@@ -272,6 +276,7 @@ class BackendSmokeTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload["items"]), 2)
+        second_item_id = next(item["id"] for item in payload["items"] if item["media_id"] == second_media_id)
 
         status, payload = self.request(
             "POST",
@@ -331,12 +336,57 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertGreater(payload["position_seconds"], player_initial_position + 0.8)
 
         status, payload = self.request(
+            "PUT",
+            "/api/host/broadcast/volume",
+            headers=host_headers,
+            json_body={"volume": 0.35},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertAlmostEqual(payload["volume"], 0.35, places=2)
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/media/upload",
+            headers=host_headers,
+            files={"file": ("sample-third.wav", wav_bytes, wav_content_type)},
+        )
+        self.assertEqual(status, 200, payload)
+        third_media_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
+            f"/api/host/playlists/{playlist_id}/items",
+            headers=host_headers,
+            json_body={"media_id": third_media_id},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(len(payload["items"]), 3)
+
+        status, payload = self.request(
+            "GET",
+            "/api/host/broadcast/status",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(len(payload["playlist"]), 3)
+        self.assertAlmostEqual(payload["volume"], 0.35, places=2)
+
+        status, payload = self.request(
+            "DELETE",
+            f"/api/host/playlists/{playlist_id}/items/{second_item_id}",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(len(payload["items"]), 2)
+        self.assertNotIn(second_media_id, [item["media_id"] for item in payload["items"]])
+
+        status, payload = self.request(
             "POST",
             "/api/host/broadcast/next",
             headers=host_headers,
         )
         self.assertEqual(status, 200, payload)
-        self.assertEqual(payload["current_media"]["id"], second_media_id)
+        self.assertEqual(payload["current_media"]["id"], third_media_id)
         self.assertLess(payload["position_seconds"], 0.75)
 
         status, payload = self.request(

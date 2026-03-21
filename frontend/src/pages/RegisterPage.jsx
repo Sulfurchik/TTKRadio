@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthToolbar from '../components/AuthToolbar'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
 import loginLogo from '../assets/login-logo.svg'
@@ -18,13 +19,15 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false)
 
   const validate = () => {
+    const normalizedLogin = formData.login.trim()
+    const normalizedFio = formData.fio.trim()
     const newErrors = {}
 
-    if (!/^[a-zA-Z]+$/.test(formData.login)) {
+    if (!/^[a-zA-Z]+$/.test(normalizedLogin)) {
       newErrors.login = t('auth.loginRule')
     }
 
-    if (!/^[а-яА-ЯёЁ\s]+$/.test(formData.fio)) {
+    if (!/^[а-яА-ЯёЁ\s-]+$/.test(normalizedFio)) {
       newErrors.fio = t('auth.fioRule')
     }
 
@@ -46,13 +49,18 @@ function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validate()) return
 
     setLoading(true)
+    setErrors({})
 
     try {
-      await register(formData)
+      await register({
+        ...formData,
+        login: formData.login.trim(),
+        fio: formData.fio.trim(),
+      })
       navigate('/login')
     } catch (err) {
       setErrors({ submit: err.response?.data?.detail || t('auth.registerError') })
@@ -63,6 +71,9 @@ function RegisterPage() {
 
   return (
     <div className="auth-page">
+      <div className="auth-page__controls">
+        <AuthToolbar />
+      </div>
       <div className="auth-card" style={{ maxWidth: '520px' }}>
         {/* Логотип ТТК */}
         <div style={{ 
@@ -111,7 +122,7 @@ function RegisterPage() {
               value={formData.fio}
               onChange={e => setFormData({ ...formData, fio: e.target.value })}
               placeholder={t('auth.fioPlaceholder')}
-              pattern="[а-яА-ЯёЁ\s]+"
+              pattern="[а-яА-ЯёЁ\s-]+"
               required
               autoComplete="name"
             />

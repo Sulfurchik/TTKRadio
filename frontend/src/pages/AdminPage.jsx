@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { adminService } from '../services'
 import Modal from '../components/Modal'
+import StatusBanner from '../components/StatusBanner'
 
 
 const ROLE_DESCRIPTIONS = {
@@ -42,15 +43,16 @@ function AdminPage() {
   const [modalType, setModalType] = useState('')
   const [formData, setFormData] = useState({})
   const [loading, setLoading] = useState(false)
+  const [notice, setNotice] = useState(null)
 
   useEffect(() => {
     loadUsers()
     loadRoles()
   }, [])
 
-  const loadUsers = async () => {
+  const loadUsers = async (activeFilters = filters) => {
     try {
-      const data = await adminService.getUsers(filters)
+      const data = await adminService.getUsers(activeFilters)
       setUsers(data)
     } catch (error) {
       console.error('Ошибка загрузки пользователей:', error)
@@ -70,8 +72,12 @@ function AdminPage() {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
-  const applyFilters = () => loadUsers()
-  const clearFilters = () => { setFilters({}); setTimeout(loadUsers, 100) }
+  const applyFilters = () => loadUsers(filters)
+  const clearFilters = () => {
+    const emptyFilters = {}
+    setFilters(emptyFilters)
+    loadUsers(emptyFilters)
+  }
 
   const openEditModal = (user) => {
     setSelectedUser(user)
@@ -99,8 +105,9 @@ function AdminPage() {
     try {
       await adminService.deleteUser(userId)
       await loadUsers()
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка: ' + error.response?.data?.detail)
+      setNotice({ type: 'error', text: error.response?.data?.detail || 'Не удалось удалить пользователя.' })
     }
   }
 
@@ -108,8 +115,9 @@ function AdminPage() {
     try {
       await adminService.updateUser(userId, { is_deleted: nextDeletedState })
       await loadUsers()
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка блокировки')
+      setNotice({ type: 'error', text: 'Не удалось изменить статус пользователя.' })
     }
   }
 
@@ -125,8 +133,9 @@ function AdminPage() {
       }
       setIsModalOpen(false)
       await loadUsers()
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка: ' + error.response?.data?.detail)
+      setNotice({ type: 'error', text: error.response?.data?.detail || 'Не удалось сохранить изменения.' })
     } finally {
       setLoading(false)
     }
@@ -169,25 +178,24 @@ function AdminPage() {
   }
 
   return (
-    <div className="container">
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ 
-          fontSize: '1.75rem', 
-          fontWeight: 700,
-          fontFamily: 'PT Sans Caption, sans-serif',
-          background: 'linear-gradient(135deg, var(--ttk-red) 0%, var(--ttk-red-dark) 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          margin: 0
-        }}>
-          Администрирование
-        </h1>
-        <p style={{ color: 'var(--ttk-gray-light)', marginTop: '0.5rem' }}>
-          Управление пользователями системы
-        </p>
-      </div>
+    <div className="container page-shell">
+      <section className="page-hero page-hero--admin">
+        <div className="page-hero__content">
+          <span className="page-hero__eyebrow">Admin Control</span>
+          <h1 className="page-hero__title">Администрирование</h1>
+          <p className="page-hero__description">
+            Управление пользователями, ролями и доступами без лишних всплывающих окон и перегруженных действий.
+          </p>
+          <div className="page-hero__chips">
+            <span className="hero-chip">Пользователей: {users.length}</span>
+            <span className="hero-chip">Ролей: {roles.length}</span>
+          </div>
+        </div>
+      </section>
 
-      <div className="card" style={{
+      <StatusBanner notice={notice} onDismiss={() => setNotice(null)} />
+
+      <div className="surface-card" style={{
         background: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(20px)',
         border: '1px solid rgba(229, 39, 19, 0.1)',
@@ -311,7 +319,7 @@ function AdminPage() {
                       </ActionIconButton>
                       <ActionIconButton title="Назначить роли" onClick={() => openRolesModal(user)}>
                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V9H2v11h5m10 0v-5a3 3 0 00-6 0v5m6 0H7" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 0c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5zm6 1.5l2 2 3-4" />
                         </svg>
                       </ActionIconButton>
                       <button 

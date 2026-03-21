@@ -64,16 +64,6 @@ export const adminService = {
 }
 
 export const playerService = {
-  getStreamUrl: async () => {
-    const response = await api.get('/player/stream')
-    return response.data
-  },
-
-  getCurrentTrack: async () => {
-    const response = await api.get('/player/current-track')
-    return response.data
-  },
-
   sendMessage: async (text) => {
     const response = await api.post('/player/messages', { text })
     return response.data

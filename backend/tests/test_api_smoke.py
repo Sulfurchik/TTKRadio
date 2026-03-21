@@ -412,6 +412,161 @@ class BackendSmokeTest(unittest.TestCase):
         )
         self.assertEqual(status, 401, payload)
 
+    def test_single_public_broadcast_owner(self):
+        first_host_payload = {
+            "login": "hostalpha",
+            "fio": "Альфа Ведущий",
+            "password": "hostalpha123!",
+            "password_confirm": "hostalpha123!",
+        }
+        second_host_payload = {
+            "login": "hostbeta",
+            "fio": "Бета Ведущий",
+            "password": "hostbeta123!",
+            "password_confirm": "hostbeta123!",
+        }
+
+        status, payload = self.request("POST", "/api/auth/register", json_body=first_host_payload)
+        self.assertEqual(status, 201, payload)
+
+        status, payload = self.request("POST", "/api/auth/register", json_body=second_host_payload)
+        self.assertEqual(status, 201, payload)
+
+        admin_auth = self.login("admin", "admin123")
+        admin_headers = self.auth_headers(admin_auth["access_token"])
+
+        status, roles_payload = self.request("GET", "/api/admin/roles", headers=admin_headers)
+        self.assertEqual(status, 200, roles_payload)
+        roles = {role["name"]: role["id"] for role in roles_payload}
+
+        status, users_payload = self.request("GET", "/api/admin/users", headers=admin_headers)
+        self.assertEqual(status, 200, users_payload)
+        users = {user["login"]: user for user in users_payload}
+
+        for login in ("hostalpha", "hostbeta"):
+            status, payload = self.request(
+                "POST",
+                f"/api/admin/users/{users[login]['id']}/roles",
+                headers=admin_headers,
+                json_body={"role_ids": [roles["Ведущий"]]},
+            )
+            self.assertEqual(status, 200, payload)
+
+        first_host_auth = self.login("hostalpha", "hostalpha123!")
+        second_host_auth = self.login("hostbeta", "hostbeta123!")
+        first_host_headers = self.auth_headers(first_host_auth["access_token"])
+        second_host_headers = self.auth_headers(second_host_auth["access_token"])
+
+        wav_name, wav_bytes, wav_content_type = make_wav_file()
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/media/upload",
+            headers=first_host_headers,
+            files={"file": (wav_name, wav_bytes, wav_content_type)},
+        )
+        self.assertEqual(status, 200, payload)
+        first_media_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/playlists",
+            headers=first_host_headers,
+            json_body={"name": "Эфир Альфа"},
+        )
+        self.assertEqual(status, 201, payload)
+        first_playlist_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
+            f"/api/host/playlists/{first_playlist_id}/items",
+            headers=first_host_headers,
+            json_body={"media_id": first_media_id},
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "POST",
+            f"/api/host/playlists/{first_playlist_id}/activate",
+            headers=first_host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/media/upload",
+            headers=second_host_headers,
+            files={"file": ("beta.wav", wav_bytes, wav_content_type)},
+        )
+        self.assertEqual(status, 200, payload)
+        second_media_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/playlists",
+            headers=second_host_headers,
+            json_body={"name": "Эфир Бета"},
+        )
+        self.assertEqual(status, 201, payload)
+        second_playlist_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
+            f"/api/host/playlists/{second_playlist_id}/items",
+            headers=second_host_headers,
+            json_body={"media_id": second_media_id},
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "POST",
+            f"/api/host/playlists/{second_playlist_id}/activate",
+            headers=second_host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/broadcast/start",
+            headers=first_host_headers,
+            form_fields={"playlist_id": first_playlist_id},
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "GET",
+            "/api/player/broadcast-status",
+            headers=admin_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["current_media"]["id"], first_media_id)
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/broadcast/start",
+            headers=second_host_headers,
+            form_fields={"playlist_id": second_playlist_id},
+        )
+        self.assertEqual(status, 200, payload)
+
+        status, payload = self.request(
+            "GET",
+            "/api/player/broadcast-status",
+            headers=admin_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["is_broadcasting"])
+        self.assertEqual(payload["current_media"]["id"], second_media_id)
+
+        status, payload = self.request(
+            "GET",
+            "/api/host/broadcast/status",
+            headers=first_host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_broadcasting"])
+        self.assertIsNone(payload["current_media"])
+
 
 if __name__ == "__main__":
     unittest.main()

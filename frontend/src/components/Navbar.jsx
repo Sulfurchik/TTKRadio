@@ -22,10 +22,10 @@ function Navbar() {
         <Link to="/" className="navbar-brand">
           <img src={logo} alt="ТТК ТрансТелеКом" />
         </Link>
-        
+
         <div className="navbar-menu">
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
           >
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,8 +35,8 @@ function Navbar() {
           </Link>
 
           {hasRole(['Ведущий', 'Администратор']) && (
-            <Link 
-              to="/host" 
+            <Link
+              to="/host"
               className={`nav-link ${location.pathname === '/host' ? 'active' : ''}`}
             >
               <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,8 +47,8 @@ function Navbar() {
           )}
 
           {hasRole(['Администратор']) && (
-            <Link 
-              to="/admin" 
+            <Link
+              to="/admin"
               className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}
             >
               <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,28 +61,17 @@ function Navbar() {
         </div>
 
         <div className="user-info">
-          <div style={{ textAlign: 'right' }}>
-            <div className="user-name" style={{ 
-              fontWeight: 600,
-              fontFamily: 'PT Sans Caption, sans-serif',
-              color: '#333'
-            }}>
-              {user?.fio}
-            </div>
+          <div className="navbar-user-copy">
+            <div className="user-name">{user?.fio}</div>
             <div className="user-roles">
               {user?.roles.map(role => (
                 <span key={role.id} className="role-badge">{role.name}</span>
               ))}
             </div>
           </div>
-          <button 
-            className="btn btn-outline btn-sm" 
+          <button
+            className="btn btn-outline btn-sm navbar-logout"
             onClick={handleLogout}
-            style={{ 
-              marginLeft: '1rem',
-              borderColor: 'var(--ttk-red)',
-              color: 'var(--ttk-red)'
-            }}
           >
             Выход
           </button>

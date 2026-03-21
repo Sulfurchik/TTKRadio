@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+import StatusBanner from '../components/StatusBanner'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { playerService } from '../services'
 import { formatPlaybackTime } from '../utils/broadcastSync'
@@ -10,6 +11,7 @@ function PlayerPage() {
   const [messages, setMessages] = useState([])
   const [isRecording, setIsRecording] = useState(false)
   const [voiceBlob, setVoiceBlob] = useState(null)
+  const [notice, setNotice] = useState(null)
   const [volume, setVolume] = useState(() => {
     const saved = localStorage.getItem('player_volume')
     return saved ? parseFloat(saved) : 0.8
@@ -80,9 +82,9 @@ function PlayerPage() {
       await playerService.sendMessage(message)
       setMessage('')
       await loadMessages()
-      alert('Сообщение отправлено!')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка отправки')
+      setNotice({ type: 'error', text: 'Не удалось отправить текстовое сообщение.' })
     }
   }
 
@@ -100,7 +102,7 @@ function PlayerPage() {
       mediaRecorderRef.current.start()
       setIsRecording(true)
     } catch (error) {
-      alert('Ошибка доступа к микрофону')
+      setNotice({ type: 'error', text: 'Не удалось получить доступ к микрофону.' })
     }
   }
 
@@ -122,29 +124,40 @@ function PlayerPage() {
       const file = new File([voiceBlob], 'voice-message.wav', { type: 'audio/wav' })
       await playerService.sendVoiceMessage(file)
       setVoiceBlob(null)
-      alert('Голосовое сообщение отправлено!')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка отправки')
+      setNotice({ type: 'error', text: 'Не удалось отправить голосовое сообщение.' })
     }
   }
 
   const canPlay = Boolean(broadcastStatus?.is_broadcasting && currentTrack)
 
   return (
-    <div className="container">
+    <div className="container page-shell">
       <audio ref={audioRef} preload="auto" />
 
-      <div style={{ marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '2px solid #e0e0e0' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, fontFamily: 'PT Sans Caption, sans-serif', color: '#000', margin: 0 }}>
-          Прямой эфир
-        </h1>
-        <p style={{ color: '#666', marginTop: '0.25rem', fontSize: '0.85rem' }}>
-          Синхронизированное вещание в реальном времени
-        </p>
-      </div>
+      <section className="page-hero page-hero--player">
+        <div className="page-hero__content">
+          <span className="page-hero__eyebrow">Live Broadcast</span>
+          <h1 className="page-hero__title">Прямой эфир</h1>
+          <p className="page-hero__description">
+            Любой слушатель подключается к эфиру на актуальной секунде, а не с начала трека.
+          </p>
+          <div className="page-hero__chips">
+            <span className={`hero-chip ${broadcastStatus?.is_broadcasting ? 'hero-chip--live' : ''}`}>
+              <span className="recording-dot" style={{ opacity: broadcastStatus?.is_broadcasting ? 1 : 0.35 }}></span>
+              {broadcastStatus?.is_broadcasting ? `В эфире ${formatPlaybackTime(playbackSeconds)}` : 'Ожидание эфира'}
+            </span>
+            <span className="hero-chip">Громкость: {Math.round(volume * 100)}%</span>
+            <span className="hero-chip">{currentTrack ? currentTrack.original_name : 'Нет активного трека'}</span>
+          </div>
+        </div>
+      </section>
+
+      <StatusBanner notice={notice} onDismiss={() => setNotice(null)} />
 
       <div className="player-page-grid">
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden' }}>
           <div
             className="card-header"
             style={{
@@ -349,8 +362,8 @@ function PlayerPage() {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 0 }}>
-          <div className="card-header" style={{ background: '#f8f9fa', borderBottom: '2px solid #e0e0e0', padding: '1rem 1.5rem', margin: 0 }}>
+        <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card-header surface-panel-header" style={{ padding: '1rem 1.5rem', margin: 0 }}>
             <h2 className="card-title" style={{ fontSize: '1rem' }}>Связь с ведущим</h2>
           </div>
 

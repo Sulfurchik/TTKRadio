@@ -21,13 +21,6 @@ function App() {
     return user.roles.some(r => roles.includes(r.name))
   }
 
-  // Проверка на Ведущего (не Администратора)
-  const isHost = () => {
-    if (!user) return false
-    const roles = user.roles.map(r => r.name)
-    return roles.includes('Ведущий') && !roles.includes('Администратор')
-  }
-
   if (isLoading) {
     return (
       <div className="loading">

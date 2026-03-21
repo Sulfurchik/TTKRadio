@@ -65,12 +65,14 @@ export function useBroadcastPlayback({
   pollIntervalMs = 1000,
   volume = 1,
   autoResume = true,
+  enableAudio = true,
 }) {
   const audioRef = useRef(null)
   const loadStatusRef = useRef(null)
   const currentStatusRef = useRef(null)
   const currentTrackKeyRef = useRef(null)
   const userPausedRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   const [broadcastStatus, setBroadcastStatus] = useState(null)
   const [currentTrack, setCurrentTrack] = useState(null)
@@ -140,8 +142,15 @@ export function useBroadcastPlayback({
   }
 
   loadStatusRef.current = async () => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+
     try {
       const status = await fetchStatus()
+      if (requestId !== requestIdRef.current) {
+        return
+      }
+
       currentStatusRef.current = status
       setBroadcastStatus(status)
       setCurrentTrack(status?.current_media || null)
@@ -159,6 +168,18 @@ export function useBroadcastPlayback({
           audio.load()
         }
         currentTrackKeyRef.current = null
+        setIsAudioPlaying(false)
+        setIsBuffering(false)
+        return
+      }
+
+      if (!enableAudio) {
+        const audio = audioRef.current
+        if (audio) {
+          audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
+        }
         setIsAudioPlaying(false)
         setIsBuffering(false)
         return
@@ -184,6 +205,35 @@ export function useBroadcastPlayback({
   }, [pollIntervalMs])
 
   useEffect(() => {
+    const syncOnVisibilityReturn = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return
+      }
+      loadStatusRef.current?.()
+    }
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', syncOnVisibilityReturn)
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', syncOnVisibilityReturn)
+      window.addEventListener('pageshow', syncOnVisibilityReturn)
+      window.addEventListener('online', syncOnVisibilityReturn)
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', syncOnVisibilityReturn)
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', syncOnVisibilityReturn)
+        window.removeEventListener('pageshow', syncOnVisibilityReturn)
+        window.removeEventListener('online', syncOnVisibilityReturn)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     const audio = audioRef.current
     if (!audio) {
       return undefined
@@ -192,6 +242,23 @@ export function useBroadcastPlayback({
     audio.volume = volume
     return undefined
   }, [volume])
+
+  useEffect(() => {
+    if (enableAudio) {
+      loadStatusRef.current?.()
+      return undefined
+    }
+
+    const audio = audioRef.current
+    if (audio) {
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+    }
+    setIsAudioPlaying(false)
+    setIsBuffering(false)
+    return undefined
+  }, [enableAudio])
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -239,12 +306,15 @@ export function useBroadcastPlayback({
       audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('ended', handleEnded)
       audio.removeEventListener('error', handleError)
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
     }
   }, [])
 
   const play = async () => {
     const status = currentStatusRef.current
-    if (!status?.is_broadcasting || !status.current_media) {
+    if (!enableAudio || !status?.is_broadcasting || !status.current_media) {
       return
     }
 

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import FileUpload from '../components/FileUpload'
-import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import MessagesList from '../components/MessagesList'
+import StatusBanner from '../components/StatusBanner'
+import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { hostService } from '../services'
 import { formatPlaybackTime } from '../utils/broadcastSync'
 
@@ -16,6 +17,12 @@ function HostPage() {
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null)
+  const [notice, setNotice] = useState(null)
+  const [monitorEnabled, setMonitorEnabled] = useState(() => localStorage.getItem('host_monitor_enabled') === 'true')
+  const [monitorVolume, setMonitorVolume] = useState(() => {
+    const savedVolume = localStorage.getItem('host_monitor_volume')
+    return savedVolume ? parseFloat(savedVolume) : 0.55
+  })
 
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
@@ -32,8 +39,9 @@ function HostPage() {
   } = useBroadcastPlayback({
     fetchStatus: hostService.getBroadcastStatus,
     pollIntervalMs: 1000,
-    volume: 1,
-    autoResume: true,
+    volume: monitorVolume,
+    autoResume: monitorEnabled,
+    enableAudio: monitorEnabled,
   })
 
   const selectedPlaylist = useMemo(
@@ -46,6 +54,14 @@ function HostPage() {
   }, [])
 
   useEffect(() => {
+    localStorage.setItem('host_monitor_enabled', monitorEnabled.toString())
+  }, [monitorEnabled])
+
+  useEffect(() => {
+    localStorage.setItem('host_monitor_volume', monitorVolume.toString())
+  }, [monitorVolume])
+
+  useEffect(() => {
     const intervalId = setInterval(() => {
       loadMessages(showArchive)
     }, 3000)
@@ -54,7 +70,11 @@ function HostPage() {
   }, [showArchive])
 
   const loadInitialData = async () => {
-    await Promise.all([loadMedia(), loadPlaylists(), loadMessages(false), refreshStatus()])
+    try {
+      await Promise.all([loadMedia(), loadPlaylists(), loadMessages(false), refreshStatus()])
+    } catch (error) {
+      setNotice({ type: 'error', text: 'Не удалось загрузить данные ведущего. Попробуйте обновить страницу.' })
+    }
   }
 
   const loadMedia = async () => {
@@ -104,9 +124,12 @@ function HostPage() {
     try {
       await hostService.uploadMedia(file)
       await loadMedia()
-      alert('Файл загружен')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка загрузки: ' + error.response?.data?.detail)
+      setNotice({
+        type: 'error',
+        text: error.response?.data?.detail || 'Не удалось загрузить файл в медиатеку.',
+      })
     }
   }
 
@@ -118,8 +141,9 @@ function HostPage() {
     try {
       await hostService.deleteMedia(mediaId)
       await Promise.all([loadMedia(), loadPlaylists(), refreshStatus()])
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка удаления')
+      setNotice({ type: 'error', text: 'Не удалось удалить файл из медиатеки.' })
     }
   }
 
@@ -132,14 +156,15 @@ function HostPage() {
     try {
       await hostService.deletePlaylist(playlistId)
       await Promise.all([loadPlaylists(), refreshStatus()])
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка удаления')
+      setNotice({ type: 'error', text: 'Не удалось удалить плейлист.' })
     }
   }
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) {
-      alert('Введите название плейлиста')
+      setNotice({ type: 'error', text: 'Введите название плейлиста, прежде чем создавать его.' })
       return
     }
 
@@ -149,24 +174,24 @@ function HostPage() {
       setShowCreatePlaylist(false)
       setSelectedPlaylistId(playlist.id)
       await loadPlaylists()
-      alert('Плейлист создан')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка создания')
+      setNotice({ type: 'error', text: 'Не удалось создать плейлист.' })
     }
   }
 
   const handleAddToPlaylist = async (mediaId) => {
     if (!selectedPlaylist) {
-      alert('Выберите плейлист из списка слева')
+      setNotice({ type: 'error', text: 'Сначала выберите плейлист слева, а потом добавляйте в него треки.' })
       return
     }
 
     try {
       await hostService.addItemToPlaylist(selectedPlaylist.id, mediaId)
       await loadPlaylists()
-      alert('Добавлено в плейлист')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка добавления')
+      setNotice({ type: 'error', text: 'Не удалось добавить трек в плейлист.' })
     }
   }
 
@@ -204,25 +229,27 @@ function HostPage() {
     try {
       await hostService.activatePlaylist(selectedPlaylist.id)
       await loadPlaylists()
-      alert('Плейлист активирован')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка активации')
+      setNotice({ type: 'error', text: 'Не удалось активировать выбранный плейлист.' })
     }
   }
 
   const handleStartBroadcast = async () => {
     if (!selectedPlaylist) {
-      alert('Выберите и активируйте плейлист')
+      setNotice({ type: 'error', text: 'Для старта эфира нужен выбранный плейлист.' })
       return
     }
 
     try {
       await hostService.startBroadcast(selectedPlaylist.id)
-      resumeAutomaticPlayback()
+      if (monitorEnabled) {
+        resumeAutomaticPlayback()
+      }
       await Promise.all([refreshStatus(), loadPlaylists()])
-      alert('Вещание запущено')
+      setNotice(null)
     } catch (error) {
-      alert('Ошибка запуска')
+      setNotice({ type: 'error', text: error.response?.data?.detail || 'Не удалось запустить вещание.' })
     }
   }
 
@@ -230,9 +257,10 @@ function HostPage() {
     try {
       await hostService.stopBroadcast()
       await refreshStatus()
-      alert('Вещание остановлено')
+      setNotice(null)
     } catch (error) {
       console.error(error)
+      setNotice({ type: 'error', text: 'Не удалось остановить эфир.' })
     }
   }
 
@@ -240,8 +268,9 @@ function HostPage() {
     try {
       await hostService.previousBroadcastTrack()
       await refreshStatus()
+      setNotice(null)
     } catch (error) {
-      alert('Не удалось переключить на предыдущий трек')
+      setNotice({ type: 'error', text: 'Не удалось переключить эфир на предыдущий трек.' })
     }
   }
 
@@ -249,8 +278,9 @@ function HostPage() {
     try {
       await hostService.nextBroadcastTrack()
       await refreshStatus()
+      setNotice(null)
     } catch (error) {
-      alert('Не удалось переключить на следующий трек')
+      setNotice({ type: 'error', text: 'Не удалось переключить эфир на следующий трек.' })
     }
   }
 
@@ -258,8 +288,9 @@ function HostPage() {
     try {
       await hostService.setCurrentMedia(mediaId)
       await refreshStatus()
+      setNotice(null)
     } catch (error) {
-      alert('Не удалось переключить трек')
+      setNotice({ type: 'error', text: 'Не удалось выбрать этот трек для эфира.' })
     }
   }
 
@@ -294,16 +325,16 @@ function HostPage() {
         try {
           await hostService.recordAudio(file)
           await loadMedia()
-          alert('Запись сохранена')
+          setNotice(null)
         } catch (error) {
-          alert('Ошибка сохранения')
+          setNotice({ type: 'error', text: 'Не удалось сохранить запись с микрофона.' })
         }
       }
 
       mediaRecorderRef.current.start()
       setIsRecording(true)
     } catch (error) {
-      alert('Ошибка доступа к микрофону')
+      setNotice({ type: 'error', text: 'Не удалось получить доступ к микрофону.' })
     }
   }
 
@@ -318,168 +349,119 @@ function HostPage() {
 
   const currentTrackId = currentTrack?.id
   const canSwitchTracks = Boolean(broadcastStatus?.is_broadcasting && currentTrackId)
+  const isLive = Boolean(broadcastStatus?.is_broadcasting)
 
   return (
-    <div className="container">
+    <div className="container page-shell">
       <audio ref={audioRef} preload="auto" />
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: '1.75rem',
-              fontWeight: 700,
-              fontFamily: 'PT Sans Caption, sans-serif',
-              margin: 0,
-              background: 'linear-gradient(135deg, var(--ttk-red) 0%, var(--ttk-red-dark) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Панель ведущего
-          </h1>
-          <p style={{ color: 'var(--ttk-gray-light)', fontSize: '0.9rem', margin: '0.5rem 0 0' }}>
-            Управление синхронизированным эфиром
+      <section className="page-hero">
+        <div className="page-hero__content">
+          <span className="page-hero__eyebrow">Studio Control</span>
+          <h1 className="page-hero__title">Панель ведущего</h1>
+          <p className="page-hero__description">
+            Управляйте эфиром, плейлистами и сообщениями слушателей с одной панели без лишних скачков громкости.
           </p>
+          <div className="page-hero__chips">
+            <span className={`hero-chip ${isLive ? 'hero-chip--live' : ''}`}>
+              <span className="recording-dot" style={{ opacity: isLive ? 1 : 0.35 }}></span>
+              {isLive ? `В эфире ${formatPlaybackTime(playbackSeconds)}` : 'Эфир остановлен'}
+            </span>
+            <span className="hero-chip">Плейлист: {selectedPlaylist?.name || 'не выбран'}</span>
+            <span className="hero-chip">Мониторинг: {monitorEnabled ? 'включён' : 'выключен'}</span>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {broadcastStatus?.is_broadcasting && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.75rem 1.25rem',
-                background: 'rgba(229, 39, 19, 0.1)',
-                backdropFilter: 'blur(20px)',
-                borderRadius: '16px',
-                border: '1px solid rgba(229, 39, 19, 0.2)',
-              }}
-            >
-              <span className="recording-dot"></span>
-              <span style={{ fontWeight: 600, color: 'var(--ttk-red)', fontSize: '0.9rem' }}>
-                В ЭФИРЕ
-              </span>
-              <span style={{ color: 'var(--ttk-red)', fontWeight: 700, fontFamily: 'PT Sans Caption, monospace' }}>
-                {formatPlaybackTime(playbackSeconds)}
-              </span>
-            </div>
-          )}
-
-          {!broadcastStatus?.is_broadcasting ? (
-            <button
-              className="btn"
-              onClick={handleStartBroadcast}
-              style={{
-                background: 'linear-gradient(135deg, #28a745 0%, #34d058 100%)',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '14px',
-                fontWeight: 600,
-              }}
-            >
+        <div className="page-hero__actions">
+          {!isLive ? (
+            <button className="btn btn-success" onClick={handleStartBroadcast}>
               Начать вещание
             </button>
           ) : (
-            <button
-              className="btn"
-              onClick={handleStopBroadcast}
-              style={{
-                background: 'linear-gradient(135deg, var(--ttk-red) 0%, var(--ttk-red-dark) 100%)',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '14px',
-                fontWeight: 600,
-              }}
-            >
-              Остановить
+            <button className="btn btn-danger" onClick={handleStopBroadcast}>
+              Остановить эфир
             </button>
           )}
         </div>
-      </div>
+      </section>
 
-      <div
-        className="card"
-        style={{
-          marginBottom: '1.5rem',
-          background: 'rgba(255, 255, 255, 0.84)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(229, 39, 19, 0.1)',
-          boxShadow: '0 8px 32px rgba(229, 39, 19, 0.08)',
-        }}
-      >
-        <div className="card-header" style={{ marginBottom: '1rem' }}>
-          <h2 className="card-title" style={{ margin: 0 }}>Монитор эфира</h2>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <StatusBanner notice={notice} onDismiss={() => setNotice(null)} />
+
+      <div className="surface-card surface-card--monitor">
+        <div className="surface-card__header">
+          <div>
+            <h2 className="card-title" style={{ margin: 0 }}>Монитор эфира</h2>
+            <p className="section-subtitle">
+              Локальное прослушивание для ведущего теперь включается отдельно и не перетягивает громкость при переходах между разделами.
+            </p>
+          </div>
+          <div className="surface-card__actions">
             <button className="btn btn-outline btn-sm" onClick={handlePreviousTrack} disabled={!canSwitchTracks}>
               ← Назад
             </button>
             <button className="btn btn-outline btn-sm" onClick={handleNextTrack} disabled={!canSwitchTracks}>
               Вперёд →
             </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${monitorEnabled ? 'btn-outline' : 'btn-primary'}`}
+              onClick={() => setMonitorEnabled(prev => !prev)}
+            >
+              {monitorEnabled ? 'Выключить мониторинг' : 'Включить мониторинг'}
+            </button>
           </div>
         </div>
 
-        {currentTrack ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) auto',
-              gap: '1rem',
-              alignItems: 'center',
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '0.35rem' }}>
-                {currentTrack.original_name}
-              </div>
-              <div style={{ color: 'var(--ttk-gray-light)', fontSize: '0.9rem' }}>
-                {currentTrack.file_type === 'video' ? 'Видеоэфир' : 'Аудиоэфир'}
-                {' · '}
-                {formatPlaybackTime(playbackSeconds)} / {formatPlaybackTime(currentTrack.duration)}
-              </div>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                color: isAudioPlaying ? 'var(--ttk-red)' : 'var(--ttk-gray-light)',
-                fontWeight: 600,
-              }}
-            >
-              <span className="recording-dot" style={{ opacity: isAudioPlaying || isBuffering ? 1 : 0.4 }}></span>
-              {isBuffering ? 'Синхронизация...' : isAudioPlaying ? 'Мониторинг активен' : 'Мониторинг ожидает'}
+        {monitorEnabled && (
+          <div className="monitor-volume">
+            <label className="form-label" htmlFor="host-monitor-volume">Громкость мониторинга</label>
+            <div className="volume-control" style={{ borderLeft: 'none', paddingLeft: 0 }}>
+              <input
+                id="host-monitor-volume"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={monitorVolume}
+                onChange={(event) => setMonitorVolume(parseFloat(event.target.value))}
+                className="volume-slider"
+                aria-label="Громкость мониторинга"
+              />
+              <span className="mono-value">{Math.round(monitorVolume * 100)}%</span>
             </div>
           </div>
-        ) : (
-          <p style={{ color: 'var(--ttk-gray-light)' }}>Эфир ещё не запущен</p>
         )}
+
+        <div className="monitor-summary">
+          {currentTrack ? (
+            <div className="monitor-summary__grid">
+              <div>
+                <div className="monitor-summary__title">{currentTrack.original_name}</div>
+                <div className="monitor-summary__meta">
+                  {currentTrack.file_type === 'video' ? 'Видеоэфир' : 'Аудиоэфир'}
+                  {' · '}
+                  {formatPlaybackTime(playbackSeconds)} / {formatPlaybackTime(currentTrack.duration)}
+                </div>
+              </div>
+              <div className="monitor-status">
+                <span className="recording-dot" style={{ opacity: isLive || isBuffering ? 1 : 0.35 }}></span>
+                {monitorEnabled
+                  ? isBuffering
+                    ? 'Локальный мониторинг синхронизируется'
+                    : isAudioPlaying
+                      ? 'Мониторинг активен'
+                      : 'Ожидание воспроизведения'
+                  : 'Мониторинг выключен'}
+              </div>
+            </div>
+          ) : (
+            <p className="section-muted">Эфир ещё не запущен.</p>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem', alignItems: 'start' }}>
-        <div
-          className="card"
-          style={{
-            padding: '1.5rem',
-            background: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(229, 39, 19, 0.1)',
-            boxShadow: '0 8px 32px rgba(229, 39, 19, 0.08)',
-          }}
-        >
+      <div className="host-layout">
+        <div className="surface-card host-layout__sidebar">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 className="card-title" style={{ fontSize: '1.1rem', margin: 0 }}>Плейлисты</h2>
             <button className="btn btn-primary btn-sm" onClick={() => setShowCreatePlaylist(true)}>+</button>
@@ -598,17 +580,8 @@ function HostPage() {
           )}
         </div>
 
-        <div>
-          <div
-            className="card"
-            style={{
-              marginBottom: '1.5rem',
-              background: 'rgba(255, 255, 255, 0.8)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(229, 39, 19, 0.1)',
-              boxShadow: '0 8px 32px rgba(229, 39, 19, 0.08)',
-            }}
-          >
+        <div className="host-layout__main">
+          <div className="surface-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header" style={{ marginBottom: '1.5rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}>Медиатека</h2>
               <button
@@ -619,7 +592,12 @@ function HostPage() {
               </button>
             </div>
 
-            <FileUpload onUpload={handleUpload} accept={['mp3', 'wav', 'ogg', 'mp4', 'webm']} maxSize={1000} />
+            <FileUpload
+              onUpload={handleUpload}
+              onError={(text) => setNotice({ type: 'error', text })}
+              accept={['mp3', 'wav', 'ogg', 'mp4', 'webm']}
+              maxSize={1000}
+            />
 
             <div
               style={{
@@ -660,15 +638,7 @@ function HostPage() {
             </div>
           </div>
 
-          <div
-            className="card"
-            style={{
-              background: 'rgba(255, 255, 255, 0.8)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(229, 39, 19, 0.1)',
-              boxShadow: '0 8px 32px rgba(229, 39, 19, 0.08)',
-            }}
-          >
+          <div className="surface-card">
             <div className="card-header" style={{ marginBottom: '1.5rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}>Сообщения</h2>
               <button className="btn btn-outline btn-sm" onClick={handleToggleArchive}>

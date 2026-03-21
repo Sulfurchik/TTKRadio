@@ -212,6 +212,21 @@ async def sync_broadcast_state(db, state: BroadcastState) -> list[dict]:
     return items
 
 
+async def stop_other_broadcasts(db, current_host_id: int) -> None:
+    now = datetime.utcnow()
+    await db.execute(
+        update(BroadcastState)
+        .where(BroadcastState.host_id != current_host_id)
+        .where(BroadcastState.is_broadcasting.is_(True))
+        .values(
+            is_broadcasting=False,
+            current_media_id=None,
+            started_at=None,
+            updated_at=now,
+        )
+    )
+
+
 def resolve_next_index(items: list[dict], current_index: int, playlist) -> int | None:
     if playlist and playlist.is_shuffle and len(items) > 1:
         choices = [index for index in range(len(items)) if index != current_index]
@@ -315,6 +330,7 @@ async def start_playlist_broadcast(db, host_id: int, playlist_id: int | None = N
         )
 
     state = await get_or_create_broadcast_state(db, host_id)
+    await stop_other_broadcasts(db, host_id)
     state.playlist_id = playlist.id
     state.source_type = BroadcastMode.PLAYLIST.value
     state.is_broadcasting = True
@@ -352,6 +368,7 @@ async def set_current_media(db, host_id: int, media_id: int) -> tuple[BroadcastS
             detail="Файл не входит в активный плейлист",
         )
 
+    await stop_other_broadcasts(db, host_id)
     state.current_media_id = media_id
     state.is_broadcasting = True
     state.started_at = datetime.utcnow()
@@ -383,6 +400,7 @@ async def advance_playlist(db, host_id: int) -> tuple[BroadcastState, list[dict]
         await db.refresh(state, attribute_names=["playlist", "current_media"])
         return state, items
 
+    await stop_other_broadcasts(db, host_id)
     state.current_media_id = items[next_index]["media"].id
     state.is_broadcasting = True
     state.started_at = datetime.utcnow()
@@ -408,6 +426,7 @@ async def rewind_playlist(db, host_id: int) -> tuple[BroadcastState, list[dict]]
     if previous_index is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Предыдущий трек недоступен")
 
+    await stop_other_broadcasts(db, host_id)
     state.current_media_id = items[previous_index]["media"].id
     state.is_broadcasting = True
     state.started_at = datetime.utcnow()
@@ -426,12 +445,22 @@ async def get_public_broadcast_state(db) -> tuple[BroadcastState | None, list[di
             selectinload(BroadcastState.playlist),
             selectinload(BroadcastState.current_media),
         )
-        .order_by(BroadcastState.updated_at.desc())
-        .limit(1)
+        .order_by(BroadcastState.updated_at.desc(), BroadcastState.started_at.desc(), BroadcastState.id.desc())
     )
-    state = result.scalar_one_or_none()
-    if not state:
+    states = result.scalars().all()
+    if not states:
         return None, []
+
+    state = states[0]
+    if len(states) > 1:
+        now = datetime.utcnow()
+        for stale_state in states[1:]:
+            stale_state.is_broadcasting = False
+            stale_state.current_media_id = None
+            stale_state.started_at = None
+            stale_state.updated_at = now
+        await db.flush()
+
     items = await progress_broadcast_if_needed(db, state)
     return state, items
 

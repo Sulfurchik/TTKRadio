@@ -1,24 +1,34 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
-function FileUpload({ onUpload, accept, maxSize, multiple = false }) {
+function FileUpload({ onUpload, onError, accept, maxSize, multiple = false }) {
   const fileInputRef = useRef(null)
+  const [isDragActive, setIsDragActive] = useState(false)
 
   const handleClick = () => {
     fileInputRef.current?.click()
   }
 
-  const handleChange = async (e) => {
-    const files = Array.from(e.target.files || [])
-    
+  const processFiles = async (files) => {
     for (const file of files) {
       if (file.size > maxSize * 1024 * 1024) {
-        alert(`Файл ${file.name} слишком большой. Максимум ${maxSize} МБ`)
+        onError?.(`Файл ${file.name} слишком большой. Максимум ${maxSize} МБ.`)
         continue
       }
       await onUpload(file)
     }
-    
+  }
+
+  const handleChange = async (e) => {
+    const files = Array.from(e.target.files || [])
+    await processFiles(files)
     e.target.value = ''
+  }
+
+  const handleDrop = async (event) => {
+    event.preventDefault()
+    setIsDragActive(false)
+    const files = Array.from(event.dataTransfer.files || [])
+    await processFiles(files)
   }
 
   const formatAccept = () => {
@@ -27,7 +37,16 @@ function FileUpload({ onUpload, accept, maxSize, multiple = false }) {
   }
 
   return (
-    <div className="upload-zone" onClick={handleClick}>
+    <div
+      className={`upload-zone ${isDragActive ? 'upload-zone--active' : ''}`}
+      onClick={handleClick}
+      onDragOver={(event) => {
+        event.preventDefault()
+        setIsDragActive(true)
+      }}
+      onDragLeave={() => setIsDragActive(false)}
+      onDrop={handleDrop}
+    >
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
       </svg>

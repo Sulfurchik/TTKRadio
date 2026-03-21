@@ -65,6 +65,7 @@ function PlayerPage() {
   const audioChunksRef = useRef([])
   const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' })
   const videoRef = useRef(null)
+  const videoContainerRef = useRef(null)
   const [liveMicHintVisible, setLiveMicHintVisible] = useState(false)
 
   const {
@@ -159,6 +160,11 @@ function PlayerPage() {
         return
       }
 
+      if (isPlayerManuallyPaused) {
+        video.pause()
+        return
+      }
+
       const targetPosition = getSyncedPositionSeconds(broadcastStatus)
       if (
         Number.isFinite(targetPosition) &&
@@ -185,7 +191,7 @@ function PlayerPage() {
     return () => {
       cancelled = true
     }
-  }, [broadcastStatus, currentTrack, isAudioPlaying])
+  }, [broadcastStatus, currentTrack, isAudioPlaying, isPlayerManuallyPaused])
 
   const loadMessages = async () => {
     try {
@@ -216,20 +222,38 @@ function PlayerPage() {
   }
 
   const handlePlayPause = async () => {
-    if (!broadcastStatus?.is_broadcasting || !currentTrack) {
+    if (!broadcastStatus?.is_broadcasting || (!currentTrack && !liveMicHintVisible)) {
       return
     }
 
-    if (isAudioPlaying) {
+    if (isPlaybackActive) {
       setIsPlayerManuallyPaused(true)
       pause()
       pauseLiveAudio().catch(() => {})
+      videoRef.current?.pause?.()
       return
     }
 
     setIsPlayerManuallyPaused(false)
     await play()
     resumeLiveAudio().catch(() => {})
+  }
+
+  const handleToggleFullscreen = async () => {
+    const container = videoContainerRef.current
+    if (!container) {
+      return
+    }
+
+    try {
+      if (document.fullscreenElement === container) {
+        await document.exitFullscreen()
+        return
+      }
+      await container.requestFullscreen()
+    } catch (error) {
+      console.debug('Не удалось переключить полноэкранный режим видео', error)
+    }
   }
 
   const handleVolumeChange = (event) => {
@@ -316,7 +340,8 @@ function PlayerPage() {
     }
   }
 
-  const canPlay = Boolean(broadcastStatus?.is_broadcasting && currentTrack)
+  const canPlay = Boolean(broadcastStatus?.is_broadcasting && (currentTrack || liveMicHintVisible))
+  const isPlaybackActive = Boolean((currentTrack && isAudioPlaying) || isLiveStreamActive)
 
   return (
     <div className="container page-shell">
@@ -390,7 +415,7 @@ function PlayerPage() {
 
           <div className="player">
             {currentTrack?.file_type === 'video' ? (
-              <div className="video-container">
+              <div className="video-container" ref={videoContainerRef}>
                 <video
                   ref={videoRef}
                   className="video-player"
@@ -402,6 +427,17 @@ function PlayerPage() {
                     transition: 'opacity 0.3s ease',
                   }}
                 />
+                <button
+                  type="button"
+                  className="video-fullscreen-btn"
+                  onClick={handleToggleFullscreen}
+                  aria-label={t('player.fullscreen')}
+                  title={t('player.fullscreen')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3H4a1 1 0 0 0-1 1v4M16 3h4a1 1 0 0 1 1 1v4M8 21H4a1 1 0 0 1-1-1v-4M16 21h4a1 1 0 0 0 1-1v-4" />
+                  </svg>
+                </button>
               </div>
             ) : (
               <div
@@ -444,7 +480,7 @@ function PlayerPage() {
                 className="player-btn"
                 onClick={handlePlayPause}
                 disabled={!canPlay}
-                aria-label={isAudioPlaying && canPlay ? t('player.pause') : t('player.play')}
+                aria-label={isPlaybackActive && canPlay ? t('player.pause') : t('player.play')}
                 style={{
                   opacity: canPlay ? 1 : 0.5,
                   cursor: canPlay ? 'pointer' : 'not-allowed',
@@ -453,7 +489,7 @@ function PlayerPage() {
                     : 'linear-gradient(135deg, #666 0%, #888 100%)',
                 }}
               >
-                {isAudioPlaying && canPlay ? (
+                {isPlaybackActive && canPlay ? (
                   <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
                   </svg>
@@ -497,7 +533,7 @@ function PlayerPage() {
               </div>
             </div>
 
-            {currentTrack && (
+            {(currentTrack || liveMicHintVisible) && (
               <div
                 className="track-summary-card"
                 style={{
@@ -518,7 +554,7 @@ function PlayerPage() {
                     lineHeight: 1.4,
                   }}
                 >
-                  {getMediaDisplayName(currentTrack.original_name)}
+                  {currentTrack ? getMediaDisplayName(currentTrack.original_name) : t('player.micOnlyLive')}
                 </p>
                 <p
                   style={{
@@ -537,13 +573,17 @@ function PlayerPage() {
                     style={{
                       width: '8px',
                       height: '8px',
-                      background: isAudioPlaying ? 'var(--ttk-red)' : 'var(--text-secondary)',
+                      background: isPlaybackActive ? 'var(--ttk-red)' : 'var(--text-secondary)',
                       borderRadius: '50%',
                       display: 'inline-block',
-                      animation: isAudioPlaying ? 'pulse 1s infinite' : 'none',
+                      animation: isPlaybackActive ? 'pulse 1s infinite' : 'none',
                     }}
                   ></span>
-                  {currentTrack.file_type === 'video' ? t('player.videoStream') : t('player.syncedAudioStream')}
+                  {currentTrack
+                    ? currentTrack.file_type === 'video'
+                      ? t('player.videoStream')
+                      : t('player.syncedAudioStream')
+                    : t('player.liveMic')}
                 </p>
               </div>
             )}

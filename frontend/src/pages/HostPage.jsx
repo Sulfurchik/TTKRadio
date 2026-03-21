@@ -92,11 +92,11 @@ function HostPage() {
   }, [broadcastStatus?.live_audio_active])
 
   useEffect(() => {
-    if (broadcastStatus?.is_broadcasting) {
+    if (broadcastStatus?.is_broadcasting || isLiveMicConnecting) {
       return
     }
 
-    if (isLiveMicActive || isLiveMicConnecting) {
+    if (isLiveMicActive) {
       liveMicStoppingRef.current = true
       teardownLiveMicTransport()
       setIsLiveMicActive(false)
@@ -480,11 +480,6 @@ function HostPage() {
   }
 
   const startLiveMicBroadcast = async () => {
-    if (!broadcastStatus?.is_broadcasting) {
-      setNotice({ type: 'error', text: t('host.liveMicRequiresBroadcast') })
-      return
-    }
-
     if (!user?.id) {
       setNotice({ type: 'error', text: t('host.liveMicError') })
       return
@@ -785,27 +780,31 @@ function HostPage() {
         </div>
 
         <div className="monitor-summary">
-          {currentTrack ? (
+          {currentTrack || isLiveMicActive || isLiveMicConnecting ? (
             <div className="monitor-summary__grid">
               <div>
-                <div className="monitor-summary__title">{currentTrack.original_name}</div>
+                <div className="monitor-summary__title">
+                  {currentTrack ? currentTrack.original_name : t('host.liveMic')}
+                </div>
                 <div className="monitor-summary__meta">
-                  {currentTrack.file_type === 'video' ? t('host.videoAir') : t('host.audioAir')}
-                  {' · '}
-                  {formatPlaybackTime(playbackSeconds)} / {formatPlaybackTime(currentTrack.duration)}
+                  {currentTrack
+                    ? (
+                      <>
+                        {currentTrack.file_type === 'video' ? t('host.videoAir') : t('host.audioAir')}
+                        {' · '}
+                        {formatPlaybackTime(playbackSeconds)} / {formatPlaybackTime(currentTrack.duration)}
+                      </>
+                    )
+                    : t('host.liveMicDescription')}
                 </div>
               </div>
               <div className="monitor-status">
-                <span className="recording-dot" style={{ opacity: isLive || isBuffering ? 1 : 0.35 }}></span>
-                {monitorEnabled
-                  ? isBuffering
-                    ? t('host.monitoringSyncing')
-                    : isBroadcastPaused
-                      ? t('host.videoPaused')
-                      : isAudioPlaying
-                      ? t('host.monitoringActive')
-                      : t('host.monitoringWaiting')
-                  : t('host.monitoringDisabled')}
+                <span className="recording-dot" style={{ opacity: isLiveMicActive || isLiveMicConnecting ? 1 : 0.35 }}></span>
+                {isLiveMicConnecting
+                  ? t('host.liveMicConnecting')
+                  : isLiveMicActive
+                    ? t('host.liveMicActive')
+                    : t('host.liveMicInactive')}
               </div>
             </div>
           ) : (

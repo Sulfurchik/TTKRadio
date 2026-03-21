@@ -40,6 +40,7 @@ from app.services.broadcast import (
     resume_current_media,
     rewind_playlist,
     set_current_media,
+    stop_other_broadcasts,
     start_playlist_broadcast,
     stop_broadcast,
     sync_broadcast_state,
@@ -429,10 +430,13 @@ async def start_live_audio_broadcast(
     state = await get_or_create_broadcast_state(db, current_user.id)
     playlist_items_data = await progress_broadcast_if_needed(db, state)
     if not state.is_broadcasting:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Сначала запустите эфир, а затем включайте микрофон",
-        )
+        await stop_other_broadcasts(db, current_user.id)
+        state.source_type = BroadcastMode.LIVE_AUDIO.value
+        state.is_broadcasting = True
+        state.is_paused = False
+        state.started_at = datetime.utcnow()
+        state.paused_at = None
+        playlist_items_data = await sync_broadcast_state(db, state)
 
     manager.activate_live_audio(str(current_user.id))
     state.source_type = BroadcastMode.LIVE_AUDIO.value
@@ -450,7 +454,14 @@ async def stop_live_audio_broadcast(
     state = await get_or_create_broadcast_state(db, current_user.id)
     playlist_items_data = await progress_broadcast_if_needed(db, state)
     manager.deactivate_live_audio(str(current_user.id))
-    state.source_type = BroadcastMode.PLAYLIST.value
+    if state.current_media_id:
+        state.source_type = BroadcastMode.PLAYLIST.value
+    else:
+        state.source_type = BroadcastMode.LIVE_AUDIO.value
+        state.is_broadcasting = False
+        state.is_paused = False
+        state.started_at = None
+        state.paused_at = None
     state.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(state, attribute_names=["playlist", "current_media"])

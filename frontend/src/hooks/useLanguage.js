@@ -84,6 +84,8 @@ const translations = {
       micRetry: 'Повторить запрос',
       micUnavailable: 'Микрофон недоступен',
       liveMic: 'Прямой микрофон',
+      fullscreen: 'Полный экран',
+      micOnlyLive: 'Микрофонный эфир',
     },
     host: {
       title: 'Управление эфиром',
@@ -328,6 +330,8 @@ const translations = {
       micRetry: 'Request access again',
       micUnavailable: 'Microphone unavailable',
       liveMic: 'Live microphone',
+      fullscreen: 'Fullscreen',
+      micOnlyLive: 'Microphone live',
     },
     host: {
       title: 'Broadcast Control',

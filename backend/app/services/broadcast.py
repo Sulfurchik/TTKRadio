@@ -166,21 +166,26 @@ async def sync_broadcast_state(db, state: BroadcastState) -> list[dict]:
     state_changed = False
 
     if not state.playlist_id:
-        if state.current_media_id is not None:
-            state.current_media_id = None
-            state_changed = True
-        if state.started_at is not None:
-            state.started_at = None
-            state_changed = True
-        if state.paused_at is not None:
-            state.paused_at = None
-            state_changed = True
-        if state.is_paused:
-            state.is_paused = False
-            state_changed = True
-        if state.is_broadcasting:
-            state.is_broadcasting = False
-            state_changed = True
+        if state.source_type == BroadcastMode.LIVE_AUDIO.value and state.is_broadcasting:
+            if state.current_media_id is not None:
+                state.current_media_id = None
+                state_changed = True
+        else:
+            if state.current_media_id is not None:
+                state.current_media_id = None
+                state_changed = True
+            if state.started_at is not None:
+                state.started_at = None
+                state_changed = True
+            if state.paused_at is not None:
+                state.paused_at = None
+                state_changed = True
+            if state.is_paused:
+                state.is_paused = False
+                state_changed = True
+            if state.is_broadcasting:
+                state.is_broadcasting = False
+                state_changed = True
 
         if state_changed:
             state.updated_at = datetime.utcnow()

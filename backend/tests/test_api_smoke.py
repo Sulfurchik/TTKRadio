@@ -225,6 +225,24 @@ class BackendSmokeTest(unittest.TestCase):
 
         status, payload = self.request(
             "POST",
+            "/api/host/broadcast/live-audio/start",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["is_broadcasting"])
+        self.assertTrue(payload["live_audio_active"])
+        self.assertIsNone(payload["current_media"])
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/broadcast/live-audio/stop",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_broadcasting"])
+
+        status, payload = self.request(
+            "POST",
             "/api/player/messages",
             headers=listener_headers,
             json_body={"text": "Привет ведущему"},

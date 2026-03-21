@@ -3,7 +3,6 @@ import { useLanguage } from '../hooks/useLanguage'
 
 function FileUpload({ onUpload, onError, accept, maxSize, multiple = false, details = [] }) {
   const t = useLanguage(state => state.t)
-  const language = useLanguage(state => state.language)
   const fileInputRef = useRef(null)
   const [isDragActive, setIsDragActive] = useState(false)
 
@@ -55,9 +54,6 @@ function FileUpload({ onUpload, onError, accept, maxSize, multiple = false, deta
       </svg>
       <p>
         <strong>{t('fileUpload.clickOrDrag')}</strong>
-      </p>
-      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-        {t('fileUpload.formats')}: {accept?.join(', ') || t('fileUpload.any')}, {t('fileUpload.maxSize')}: {maxSize} {language === 'en' ? 'MB' : 'МБ'}
       </p>
       {details.length > 0 && (
         <div className="upload-zone__details">

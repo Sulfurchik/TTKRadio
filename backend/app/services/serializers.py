@@ -124,12 +124,14 @@ def serialize_broadcast_status(state, playlist_items_data: list[dict]) -> Broadc
     position_seconds = 0.0
 
     if state and state.is_broadcasting and state.started_at and current_media:
-        position_seconds = max((server_time - state.started_at).total_seconds(), 0.0)
+        reference_time = state.paused_at if state.is_paused and state.paused_at else server_time
+        position_seconds = max((reference_time - state.started_at).total_seconds(), 0.0)
         if current_media.duration > 0:
             position_seconds = min(position_seconds, current_media.duration)
 
     return BroadcastStatusResponse(
         is_broadcasting=bool(state and state.is_broadcasting),
+        is_paused=bool(state and state.is_paused),
         current_media=current_media,
         is_video=bool(current_media and current_media.file_type == "video"),
         playlist=items,

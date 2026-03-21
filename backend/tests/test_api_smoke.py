@@ -336,6 +336,43 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertGreater(payload["position_seconds"], player_initial_position + 0.8)
 
         status, payload = self.request(
+            "POST",
+            "/api/host/broadcast/pause",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["is_paused"])
+        paused_position = payload["position_seconds"]
+
+        time.sleep(0.5)
+        status, payload = self.request(
+            "GET",
+            "/api/player/broadcast-status",
+            headers=listener_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["is_paused"])
+        self.assertLess(abs(payload["position_seconds"] - paused_position), 0.2)
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/broadcast/resume",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_paused"])
+
+        time.sleep(0.4)
+        status, payload = self.request(
+            "GET",
+            "/api/player/broadcast-status",
+            headers=listener_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_paused"])
+        self.assertGreater(payload["position_seconds"], paused_position + 0.2)
+
+        status, payload = self.request(
             "PUT",
             "/api/host/broadcast/volume",
             headers=host_headers,
@@ -382,7 +419,7 @@ class BackendSmokeTest(unittest.TestCase):
 
         status, payload = self.request(
             "POST",
-            "/api/host/broadcast/next",
+            "/api/host/broadcast/finish",
             headers=host_headers,
         )
         self.assertEqual(status, 200, payload)

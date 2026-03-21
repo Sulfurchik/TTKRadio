@@ -191,6 +191,21 @@ export const hostService = {
     return response.data
   },
 
+  pauseBroadcast: async () => {
+    const response = await api.post('/host/broadcast/pause')
+    return response.data
+  },
+
+  resumeBroadcast: async () => {
+    const response = await api.post('/host/broadcast/resume')
+    return response.data
+  },
+
+  finishBroadcastMedia: async () => {
+    const response = await api.post('/host/broadcast/finish')
+    return response.data
+  },
+
   startLiveAudioBroadcast: async () => {
     const response = await api.post('/host/broadcast/live-audio/start')
     return response.data

@@ -131,8 +131,10 @@ class BroadcastState(Base):
     current_media_id = Column(Integer, ForeignKey('media_library.id', ondelete='SET NULL'), nullable=True)
     source_type = Column(String(20), default='playlist', nullable=False)
     is_broadcasting = Column(Boolean, default=False, nullable=False)
+    is_paused = Column(Boolean, default=False, nullable=False)
     volume = Column(Float, default=1.0, nullable=False)
     started_at = Column(DateTime, nullable=True)
+    paused_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

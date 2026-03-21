@@ -162,9 +162,14 @@ export function useBroadcastPlayback({
     }
 
     const shouldPlay =
-      status.is_broadcasting && (options.forcePlay || (autoResume && !userPausedRef.current))
+      status.is_broadcasting &&
+      !status.is_paused &&
+      (options.forcePlay || (autoResume && !userPausedRef.current))
 
     if (!shouldPlay) {
+      if (status.is_paused && !audio.paused) {
+        audio.pause()
+      }
       setIsBuffering(false)
       return
     }

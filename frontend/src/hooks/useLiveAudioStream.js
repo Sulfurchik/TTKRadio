@@ -56,6 +56,10 @@ export function useLiveAudioStream({
     const audioContext = await ensureAudioContext()
     const float32Samples = int16BufferToFloat32Array(arrayBuffer)
     const { sampleRate } = streamConfigRef.current
+    if (!float32Samples.length || !Number.isFinite(sampleRate) || sampleRate <= 0) {
+      return
+    }
+
     const audioBuffer = audioContext.createBuffer(1, float32Samples.length, sampleRate)
     audioBuffer.copyToChannel(float32Samples, 0)
 
@@ -152,7 +156,11 @@ export function useLiveAudioStream({
         }
 
         setIsStreamActive(true)
-        await scheduleChunkPlayback(event.data)
+        try {
+          await scheduleChunkPlayback(event.data)
+        } catch (error) {
+          console.debug('Не удалось воспроизвести live-аудио фрагмент', error)
+        }
       }
 
       socket.onclose = () => {

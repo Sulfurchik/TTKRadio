@@ -29,12 +29,15 @@ from app.services.broadcast import (
     advance_playlist,
     cleanup_media_references,
     cleanup_playlist_references,
+    finish_current_media,
     get_or_create_broadcast_state,
     get_playlist_items,
     insert_playlist_item,
+    pause_current_media,
     progress_broadcast_if_needed,
     remove_playlist_item,
     reorder_playlist_items,
+    resume_current_media,
     rewind_playlist,
     set_current_media,
     start_playlist_broadcast,
@@ -384,6 +387,36 @@ async def update_current_media(
     db: AsyncSession = Depends(get_db),
 ):
     state, playlist_items_data = await set_current_media(db, current_user.id, request.media_id)
+    await db.commit()
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
+
+
+@router.post("/broadcast/pause", response_model=BroadcastStatusResponse)
+async def pause_broadcast_media(
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    state, playlist_items_data = await pause_current_media(db, current_user.id)
+    await db.commit()
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
+
+
+@router.post("/broadcast/resume", response_model=BroadcastStatusResponse)
+async def resume_broadcast_media(
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    state, playlist_items_data = await resume_current_media(db, current_user.id)
+    await db.commit()
+    return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
+
+
+@router.post("/broadcast/finish", response_model=BroadcastStatusResponse)
+async def finish_broadcast_media(
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    state, playlist_items_data = await finish_current_media(db, current_user.id)
     await db.commit()
     return apply_live_audio_fields(serialize_broadcast_status(state, playlist_items_data))
 

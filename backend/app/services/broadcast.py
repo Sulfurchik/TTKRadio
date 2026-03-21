@@ -172,6 +172,12 @@ async def sync_broadcast_state(db, state: BroadcastState) -> list[dict]:
         if state.started_at is not None:
             state.started_at = None
             state_changed = True
+        if state.paused_at is not None:
+            state.paused_at = None
+            state_changed = True
+        if state.is_paused:
+            state.is_paused = False
+            state_changed = True
         if state.is_broadcasting:
             state.is_broadcasting = False
             state_changed = True
@@ -192,6 +198,12 @@ async def sync_broadcast_state(db, state: BroadcastState) -> list[dict]:
         if state.started_at is not None:
             state.started_at = None
             state_changed = True
+        if state.paused_at is not None:
+            state.paused_at = None
+            state_changed = True
+        if state.is_paused:
+            state.is_paused = False
+            state_changed = True
         if state.is_broadcasting:
             state.is_broadcasting = False
             state_changed = True
@@ -202,6 +214,8 @@ async def sync_broadcast_state(db, state: BroadcastState) -> list[dict]:
         state.current_media_id = items[0]["media"].id if state.is_broadcasting else None
         if not state.is_broadcasting:
             state.started_at = None
+            state.paused_at = None
+            state.is_paused = False
         state_changed = True
 
     if state_changed:
@@ -220,8 +234,10 @@ async def stop_other_broadcasts(db, current_host_id: int) -> None:
         .where(BroadcastState.is_broadcasting.is_(True))
         .values(
             is_broadcasting=False,
+            is_paused=False,
             current_media_id=None,
             started_at=None,
+            paused_at=None,
             updated_at=now,
         )
     )
@@ -263,7 +279,13 @@ async def create_history_entry(db, state: BroadcastState) -> None:
 
 async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
     items = await sync_broadcast_state(db, state)
-    if not state.is_broadcasting or not state.started_at or not items or not state.current_media_id:
+    if (
+        not state.is_broadcasting
+        or state.is_paused
+        or not state.started_at
+        or not items
+        or not state.current_media_id
+    ):
         return items
 
     now = datetime.utcnow()
@@ -276,6 +298,8 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
         current_index = 0
         state.current_media_id = items[0]["media"].id
         state.started_at = now
+        state.is_paused = False
+        state.paused_at = None
         state.updated_at = now
         await db.flush()
         await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -293,8 +317,10 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
         next_index = resolve_next_index(items, current_index, state.playlist)
         if next_index is None:
             state.is_broadcasting = False
+            state.is_paused = False
             state.current_media_id = None
             state.started_at = None
+            state.paused_at = None
             state.updated_at = now
             await db.flush()
             await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -306,6 +332,8 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
     if has_track_changed:
         state.current_media_id = items[current_index]["media"].id
         state.started_at = now - timedelta(seconds=remaining_elapsed)
+        state.is_paused = False
+        state.paused_at = None
         state.updated_at = now
         await db.flush()
         await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -334,7 +362,9 @@ async def start_playlist_broadcast(db, host_id: int, playlist_id: int | None = N
     state.playlist_id = playlist.id
     state.source_type = BroadcastMode.PLAYLIST.value
     state.is_broadcasting = True
+    state.is_paused = False
     state.started_at = datetime.utcnow()
+    state.paused_at = None
     if state.current_media_id not in [item["media"].id for item in items]:
         state.current_media_id = items[0]["media"].id
     state.updated_at = datetime.utcnow()
@@ -347,8 +377,10 @@ async def start_playlist_broadcast(db, host_id: int, playlist_id: int | None = N
 async def stop_broadcast(db, host_id: int) -> BroadcastState:
     state = await get_or_create_broadcast_state(db, host_id)
     state.is_broadcasting = False
+    state.is_paused = False
     state.current_media_id = None
     state.started_at = None
+    state.paused_at = None
     state.updated_at = datetime.utcnow()
     await db.flush()
     await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -371,7 +403,9 @@ async def set_current_media(db, host_id: int, media_id: int) -> tuple[BroadcastS
     await stop_other_broadcasts(db, host_id)
     state.current_media_id = media_id
     state.is_broadcasting = True
+    state.is_paused = False
     state.started_at = datetime.utcnow()
+    state.paused_at = None
     state.updated_at = datetime.utcnow()
     await db.flush()
     await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -393,8 +427,10 @@ async def advance_playlist(db, host_id: int) -> tuple[BroadcastState, list[dict]
     next_index = resolve_next_index(items, current_index, state.playlist)
     if next_index is None:
         state.is_broadcasting = False
+        state.is_paused = False
         state.current_media_id = None
         state.started_at = None
+        state.paused_at = None
         state.updated_at = datetime.utcnow()
         await db.flush()
         await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -403,7 +439,9 @@ async def advance_playlist(db, host_id: int) -> tuple[BroadcastState, list[dict]
     await stop_other_broadcasts(db, host_id)
     state.current_media_id = items[next_index]["media"].id
     state.is_broadcasting = True
+    state.is_paused = False
     state.started_at = datetime.utcnow()
+    state.paused_at = None
     state.updated_at = datetime.utcnow()
     await db.flush()
     await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -429,7 +467,9 @@ async def rewind_playlist(db, host_id: int) -> tuple[BroadcastState, list[dict]]
     await stop_other_broadcasts(db, host_id)
     state.current_media_id = items[previous_index]["media"].id
     state.is_broadcasting = True
+    state.is_paused = False
     state.started_at = datetime.utcnow()
+    state.paused_at = None
     state.updated_at = datetime.utcnow()
     await db.flush()
     await db.refresh(state, attribute_names=["playlist", "current_media"])
@@ -456,8 +496,10 @@ async def get_public_broadcast_state(db) -> tuple[BroadcastState | None, list[di
         now = datetime.utcnow()
         for stale_state in states[1:]:
             stale_state.is_broadcasting = False
+            stale_state.is_paused = False
             stale_state.current_media_id = None
             stale_state.started_at = None
+            stale_state.paused_at = None
             stale_state.updated_at = now
         await db.flush()
 
@@ -473,7 +515,9 @@ async def cleanup_media_references(db, host_id: int, media_id: int) -> None:
         items = await sync_broadcast_state(db, state)
         if not items:
             state.is_broadcasting = False
+            state.is_paused = False
             state.started_at = None
+            state.paused_at = None
             state.updated_at = datetime.utcnow()
         await db.flush()
 
@@ -484,6 +528,81 @@ async def cleanup_playlist_references(db, host_id: int, playlist_id: int) -> Non
         state.playlist_id = None
         state.current_media_id = None
         state.is_broadcasting = False
+        state.is_paused = False
         state.started_at = None
+        state.paused_at = None
         state.updated_at = datetime.utcnow()
         await db.flush()
+
+
+async def pause_current_media(db, host_id: int) -> tuple[BroadcastState, list[dict]]:
+    state = await get_or_create_broadcast_state(db, host_id)
+    items = await sync_broadcast_state(db, state)
+    if not state.is_broadcasting or not state.current_media_id or not state.started_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Эфир не запущен")
+    if state.is_paused:
+        return state, items
+
+    state.is_paused = True
+    state.paused_at = datetime.utcnow()
+    state.updated_at = state.paused_at
+    await db.flush()
+    await db.refresh(state, attribute_names=["playlist", "current_media"])
+    return state, items
+
+
+async def resume_current_media(db, host_id: int) -> tuple[BroadcastState, list[dict]]:
+    state = await get_or_create_broadcast_state(db, host_id)
+    items = await sync_broadcast_state(db, state)
+    if not state.is_broadcasting or not state.current_media_id or not state.started_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Эфир не запущен")
+    if not state.is_paused:
+        return state, items
+
+    now = datetime.utcnow()
+    if state.paused_at:
+        state.started_at = state.started_at + (now - state.paused_at)
+    state.is_paused = False
+    state.paused_at = None
+    state.updated_at = now
+    await db.flush()
+    await db.refresh(state, attribute_names=["playlist", "current_media"])
+    return state, items
+
+
+async def finish_current_media(db, host_id: int) -> tuple[BroadcastState, list[dict]]:
+    state = await get_or_create_broadcast_state(db, host_id)
+    items = await sync_broadcast_state(db, state)
+    if not items:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Активный плейлист пуст")
+
+    current_index = next(
+        (index for index, item in enumerate(items) if item["media"].id == state.current_media_id),
+        None,
+    )
+    if current_index is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Текущий файл не найден в плейлисте")
+
+    next_index = resolve_next_index(items, current_index, state.playlist)
+    if next_index is None:
+        state.is_broadcasting = False
+        state.is_paused = False
+        state.current_media_id = None
+        state.started_at = None
+        state.paused_at = None
+        state.updated_at = datetime.utcnow()
+        await db.flush()
+        await db.refresh(state, attribute_names=["playlist", "current_media"])
+        return state, items
+
+    await stop_other_broadcasts(db, host_id)
+    state.current_media_id = items[next_index]["media"].id
+    state.is_broadcasting = True
+    state.is_paused = False
+    state.started_at = datetime.utcnow()
+    state.paused_at = None
+    state.updated_at = datetime.utcnow()
+    await db.flush()
+    await db.refresh(state, attribute_names=["playlist", "current_media"])
+    await create_history_entry(db, state)
+    return state, items

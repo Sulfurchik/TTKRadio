@@ -49,6 +49,7 @@ async def get_stream_url(
         stream_url=serialized_status.current_media.storage_url if serialized_status.current_media else None,
         websocket_url=serialized_status.websocket_url,
         is_broadcasting=serialized_status.is_broadcasting,
+        is_paused=serialized_status.is_paused,
         current_media=serialized_status.current_media,
         playlist=serialized_status.playlist,
         is_looping=serialized_status.is_looping,

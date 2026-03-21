@@ -361,6 +361,36 @@ function HostPage() {
     }
   }
 
+  const handlePauseVideo = async () => {
+    try {
+      await hostService.pauseBroadcast()
+      await refreshStatus()
+      setNotice(null)
+    } catch (error) {
+      setNotice({ type: 'error', text: t('host.pauseVideoError') })
+    }
+  }
+
+  const handleResumeVideo = async () => {
+    try {
+      await hostService.resumeBroadcast()
+      await refreshStatus()
+      setNotice(null)
+    } catch (error) {
+      setNotice({ type: 'error', text: t('host.resumeVideoError') })
+    }
+  }
+
+  const handleFinishVideo = async () => {
+    try {
+      await hostService.finishBroadcastMedia()
+      await refreshStatus()
+      setNotice(null)
+    } catch (error) {
+      setNotice({ type: 'error', text: t('host.finishVideoError') })
+    }
+  }
+
   const handleSelectTrack = async (mediaId) => {
     try {
       await hostService.setCurrentMedia(mediaId)
@@ -630,6 +660,8 @@ function HostPage() {
   const currentTrackId = currentTrack?.id
   const canSwitchTracks = Boolean(broadcastStatus?.is_broadcasting && currentTrackId)
   const isLive = Boolean(broadcastStatus?.is_broadcasting)
+  const isCurrentVideo = currentTrack?.file_type === 'video'
+  const isBroadcastPaused = Boolean(broadcastStatus?.is_paused)
 
   return (
     <div className="container page-shell">
@@ -649,6 +681,11 @@ function HostPage() {
             </span>
             <span className="hero-chip">{t('host.playlist')}: {selectedPlaylist?.name || t('host.notSelected')}</span>
             <span className="hero-chip">{t('host.monitoring')}: {monitorEnabled ? t('host.enabled') : t('host.disabled')}</span>
+            {isCurrentVideo && isLive && (
+              <span className="hero-chip">
+                {isBroadcastPaused ? t('host.videoPaused') : t('host.videoPlaying')}
+              </span>
+            )}
             <span className={`hero-chip ${isLiveMicActive ? 'hero-chip--live' : ''}`}>
               <span className="recording-dot" style={{ opacity: isLiveMicActive ? 1 : 0.35 }}></span>
               {isLiveMicActive ? t('host.liveMicActive') : t('host.liveMicInactive')}
@@ -686,6 +723,19 @@ function HostPage() {
             <button className="btn btn-outline btn-sm" onClick={handleNextTrack} disabled={!canSwitchTracks}>
               {t('host.next')} →
             </button>
+            {isCurrentVideo && isLive && (
+              <>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={isBroadcastPaused ? handleResumeVideo : handlePauseVideo}
+                >
+                  {isBroadcastPaused ? t('host.resumeVideo') : t('host.pauseVideo')}
+                </button>
+                <button className="btn btn-outline btn-sm" onClick={handleFinishVideo}>
+                  {t('host.finishVideo')}
+                </button>
+              </>
+            )}
             <button
               type="button"
               className={`btn btn-sm ${monitorEnabled ? 'btn-outline' : 'btn-primary'}`}
@@ -750,7 +800,9 @@ function HostPage() {
                 {monitorEnabled
                   ? isBuffering
                     ? t('host.monitoringSyncing')
-                    : isAudioPlaying
+                    : isBroadcastPaused
+                      ? t('host.videoPaused')
+                      : isAudioPlaying
                       ? t('host.monitoringActive')
                       : t('host.monitoringWaiting')
                   : t('host.monitoringDisabled')}

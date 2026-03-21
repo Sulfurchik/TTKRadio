@@ -31,7 +31,9 @@ export function getSyncedPositionSeconds(status, now = Date.now()) {
 
   let position = Number(status.position_seconds || 0)
 
-  if (status.server_timestamp_ms) {
+  if (status.is_paused) {
+    position = Math.max(position, 0)
+  } else if (status.server_timestamp_ms) {
     position += Math.max(0, (now - Number(status.server_timestamp_ms)) / 1000)
   } else if (status.server_time) {
     const serverTime = new Date(status.server_time).getTime()

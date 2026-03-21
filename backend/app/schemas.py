@@ -256,6 +256,7 @@ class BroadcastMediaSelectRequest(BaseModel):
 
 class BroadcastStatusResponse(BaseSchema):
     is_broadcasting: bool
+    is_paused: bool = False
     current_media: Optional[MediaResponse]
     is_video: bool
     playlist: List[PlaylistItemResponse] = Field(default_factory=list)
@@ -277,6 +278,7 @@ class StreamResponse(BaseSchema):
     stream_url: Optional[str]
     websocket_url: Optional[str]
     is_broadcasting: bool
+    is_paused: bool = False
     current_media: Optional[MediaResponse]
     playlist: List[PlaylistItemResponse] = Field(default_factory=list)
     is_looping: bool = False

@@ -9,6 +9,41 @@ import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } 
 import { getMediaDisplayName } from '../utils/media'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
+function waitForVideoMetadata(video) {
+  if (!video) {
+    return Promise.resolve()
+  }
+
+  if (video.readyState >= 1) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve) => {
+    let timeoutId = null
+
+    const cleanup = () => {
+      video.removeEventListener('loadedmetadata', handleReady)
+      video.removeEventListener('canplay', handleReady)
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+      }
+    }
+
+    const handleReady = () => {
+      cleanup()
+      resolve()
+    }
+
+    timeoutId = window.setTimeout(() => {
+      cleanup()
+      resolve()
+    }, 3000)
+
+    video.addEventListener('loadedmetadata', handleReady)
+    video.addEventListener('canplay', handleReady)
+  })
+}
+
 function PlayerPage() {
   const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
@@ -98,6 +133,8 @@ function PlayerPage() {
       return undefined
     }
 
+    let cancelled = false
+
     if (currentTrack?.file_type !== 'video' || !currentTrack?.storage_url) {
       video.pause()
       video.removeAttribute('src')
@@ -110,29 +147,44 @@ function PlayerPage() {
     }
 
     const absoluteSource = new URL(currentTrack.storage_url, window.location.origin).toString()
-    if (video.src !== absoluteSource) {
+    const hasSourceChanged = video.src !== absoluteSource
+    if (hasSourceChanged) {
       video.src = currentTrack.storage_url
       video.load()
     }
 
-    const targetPosition = getSyncedPositionSeconds(broadcastStatus)
-    if (Math.abs((video.currentTime || 0) - targetPosition) > SYNC_TOLERANCE_SECONDS) {
-      try {
-        video.currentTime = targetPosition
-      } catch (error) {
-        console.debug('Не удалось синхронизировать видеопоток', error)
+    const syncVideo = async () => {
+      await waitForVideoMetadata(video)
+      if (cancelled) {
+        return
+      }
+
+      const targetPosition = getSyncedPositionSeconds(broadcastStatus)
+      if (
+        Number.isFinite(targetPosition) &&
+        Math.abs((video.currentTime || 0) - targetPosition) > SYNC_TOLERANCE_SECONDS
+      ) {
+        try {
+          video.currentTime = Math.max(0, targetPosition)
+        } catch (error) {
+          console.debug('Не удалось синхронизировать видеопоток', error)
+        }
+      }
+
+      video.muted = true
+
+      if (broadcastStatus?.is_broadcasting && !broadcastStatus?.is_paused && isAudioPlaying) {
+        video.play().catch(() => {})
+      } else {
+        video.pause()
       }
     }
 
-    video.muted = true
+    syncVideo().catch(() => {})
 
-    if (broadcastStatus?.is_broadcasting && isAudioPlaying) {
-      video.play().catch(() => {})
-    } else {
-      video.pause()
+    return () => {
+      cancelled = true
     }
-
-    return undefined
   }, [broadcastStatus, currentTrack, isAudioPlaying])
 
   const loadMessages = async () => {

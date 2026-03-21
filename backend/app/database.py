@@ -1,6 +1,6 @@
 from typing import AsyncGenerator
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from config.settings import settings
@@ -32,6 +32,22 @@ if settings.DATABASE_URL.startswith("sqlite"):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(ensure_broadcast_state_columns)
+
+
+def ensure_broadcast_state_columns(sync_conn):
+    inspector = inspect(sync_conn)
+    column_names = {column["name"] for column in inspector.get_columns("broadcast_states")}
+
+    if "is_paused" not in column_names:
+        sync_conn.execute(
+            text("ALTER TABLE broadcast_states ADD COLUMN is_paused BOOLEAN NOT NULL DEFAULT 0")
+        )
+
+    if "paused_at" not in column_names:
+        sync_conn.execute(
+            text("ALTER TABLE broadcast_states ADD COLUMN paused_at DATETIME NULL")
+        )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

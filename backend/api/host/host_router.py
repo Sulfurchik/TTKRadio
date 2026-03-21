@@ -15,6 +15,7 @@ from app.schemas import (
     BroadcastStatusResponse,
     BroadcastVolumeRequest,
     MediaResponse,
+    MediaUpdateRequest,
     MessageResponse,
     MessageStatusUpdateRequest,
     OperationResponse,
@@ -170,6 +171,22 @@ async def delete_media(
     await db.delete(media)
     await db.commit()
     return OperationResponse(message="Файл удален")
+
+
+@router.put("/media/{media_id}", response_model=MediaResponse)
+async def update_media(
+    media_id: int,
+    request: MediaUpdateRequest,
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    media = await get_host_media(db, current_user.id, media_id)
+    media.original_name = request.original_name
+    media.updated_at = datetime.utcnow()
+    await db.commit()
+
+    result = await db.execute(select(MediaLibrary).where(MediaLibrary.id == media.id))
+    return serialize_media(result.scalar_one())
 
 
 @router.get("/playlists", response_model=list[PlaylistResponse])

@@ -17,15 +17,19 @@ export function getTrackSource(track) {
 }
 
 export function getTrackKey(status) {
-  if (!status?.current_media) {
+  if (!status?.is_broadcasting) {
     return null
   }
 
-  return `${status.current_media.id}:${status.started_at || ''}`
+  if (status.current_media) {
+    return `${status.current_media.id}:${status.started_at || ''}`
+  }
+
+  return `${status.mode || 'broadcast'}:${status.started_at || ''}`
 }
 
 export function getSyncedPositionSeconds(status, now = Date.now()) {
-  if (!status?.is_broadcasting || !status.current_media) {
+  if (!status?.is_broadcasting) {
     return 0
   }
 
@@ -47,7 +51,7 @@ export function getSyncedPositionSeconds(status, now = Date.now()) {
     }
   }
 
-  const duration = Number(status.current_media.duration || 0)
+  const duration = Number(status.current_media?.duration || 0)
   if (duration > 0) {
     return Math.min(position, duration)
   }

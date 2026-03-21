@@ -112,6 +112,11 @@ export const hostService = {
     return response.data
   },
 
+  renameMedia: async (mediaId, originalName) => {
+    const response = await api.put(`/host/media/${mediaId}`, { original_name: originalName })
+    return response.data
+  },
+
   // Плейлисты
   getPlaylists: async () => {
     const response = await api.get('/host/playlists')

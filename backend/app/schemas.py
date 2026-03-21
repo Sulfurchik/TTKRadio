@@ -238,6 +238,18 @@ class PlaylistAddItemRequest(BaseModel):
     order: Optional[int] = Field(default=None, ge=0)
 
 
+class MediaUpdateRequest(BaseModel):
+    original_name: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("original_name")
+    @classmethod
+    def validate_original_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Название файла не может быть пустым")
+        return cleaned
+
+
 class PlaylistReorderRequest(BaseModel):
     item_ids: List[int] = Field(..., min_length=1)
 

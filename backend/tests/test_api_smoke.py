@@ -232,6 +232,17 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertTrue(payload["is_broadcasting"])
         self.assertTrue(payload["live_audio_active"])
         self.assertIsNone(payload["current_media"])
+        live_audio_started_at = payload["started_at"]
+
+        time.sleep(0.35)
+        status, payload = self.request(
+            "GET",
+            "/api/host/broadcast/status",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["started_at"], live_audio_started_at)
+        self.assertGreater(payload["position_seconds"], 0.2)
 
         status, payload = self.request(
             "POST",
@@ -268,6 +279,15 @@ class BackendSmokeTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
         second_media_id = payload["id"]
+
+        status, payload = self.request(
+            "PUT",
+            f"/api/host/media/{second_media_id}",
+            headers=host_headers,
+            json_body={"original_name": "Обновлённое имя файла.wav"},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["original_name"], "Обновлённое имя файла.wav")
 
         status, payload = self.request(
             "POST",

@@ -66,7 +66,9 @@ function PlayerPage() {
   const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' })
   const videoRef = useRef(null)
   const videoContainerRef = useRef(null)
+  const playerCardRef = useRef(null)
   const [liveMicHintVisible, setLiveMicHintVisible] = useState(false)
+  const [communicationHeight, setCommunicationHeight] = useState(null)
 
   const {
     audioRef: mediaRef,
@@ -127,6 +129,36 @@ function PlayerPage() {
 
     setIsPlayerManuallyPaused(false)
   }, [broadcastStatus?.is_broadcasting])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const updateHeight = () => {
+      if (window.innerWidth < 1024) {
+        setCommunicationHeight(null)
+        return
+      }
+
+      setCommunicationHeight(playerCardRef.current?.offsetHeight || null)
+    }
+
+    updateHeight()
+
+    let observer = null
+    if (typeof ResizeObserver !== 'undefined' && playerCardRef.current) {
+      observer = new ResizeObserver(updateHeight)
+      observer.observe(playerCardRef.current)
+    }
+
+    window.addEventListener('resize', updateHeight)
+
+    return () => {
+      window.removeEventListener('resize', updateHeight)
+      observer?.disconnect()
+    }
+  }, [currentTrack?.id, isBuffering, isAudioPlaying, liveMicHintVisible, messages.length])
 
   useEffect(() => {
     const video = videoRef.current
@@ -360,7 +392,7 @@ function PlayerPage() {
       <StatusBanner notice={notice} onDismiss={() => setNotice(null)} />
 
       <div className="player-page-grid">
-        <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div ref={playerCardRef} className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div
             className="card-header surface-panel-header player-panel-header"
             style={{
@@ -605,7 +637,10 @@ function PlayerPage() {
           </div>
         </div>
 
-        <div className="surface-card surface-card--panel communication-panel-shell" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          className="surface-card surface-card--panel communication-panel-shell"
+          style={{ padding: 0, overflow: 'hidden', height: communicationHeight ? `${communicationHeight}px` : undefined }}
+        >
           <div className="card-header surface-panel-header player-panel-header" style={{ padding: '1.25rem 1.5rem', margin: 0 }}>
             <h2 className="card-title" style={{ fontSize: '1.1rem', margin: 0 }}>{t('player.communication')}</h2>
           </div>

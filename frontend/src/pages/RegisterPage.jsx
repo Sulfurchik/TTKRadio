@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
-import loginLogo from '../assets/login-logo.png'
+import loginLogo from '../assets/login-logo.svg'
 
 function RegisterPage() {
   const navigate = useNavigate()
@@ -201,7 +201,7 @@ function RegisterPage() {
           textAlign: 'center',
           borderRadius: 'var(--radius)'
         }}>
-          <p style={{ fontSize: '0.75rem', color: '#666', margin: 0 }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
             АО «Компания ТрансТелеКом»
           </p>
           <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>

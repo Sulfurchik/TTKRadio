@@ -205,6 +205,13 @@ const translations = {
       takeInProgress: 'В работу',
       finish: 'Завершить',
     },
+    fileUpload: {
+      clickOrDrag: 'Нажмите для загрузки или перетащите файл',
+      formats: 'Форматы',
+      maxSize: 'Макс. размер',
+      any: 'Любые',
+      fileTooLarge: (fileName, maxSize) => `Файл ${fileName} слишком большой. Максимум ${maxSize} МБ.`,
+    },
   },
   en: {
     common: {
@@ -407,6 +414,13 @@ const translations = {
       completed: 'Completed',
       takeInProgress: 'Take',
       finish: 'Complete',
+    },
+    fileUpload: {
+      clickOrDrag: 'Click to upload or drag and drop file',
+      formats: 'Formats',
+      maxSize: 'Max size',
+      any: 'Any',
+      fileTooLarge: (fileName, maxSize) => `File ${fileName} is too large. Maximum ${maxSize} MB.`,
     },
   },
 }

@@ -198,14 +198,6 @@ function PlayerPage() {
           <p className="page-hero__description">
             {t('player.subtitle')}
           </p>
-          <div className="page-hero__chips">
-            <span className={`hero-chip ${broadcastStatus?.is_broadcasting ? 'hero-chip--live' : ''}`}>
-              <span className="recording-dot" style={{ opacity: broadcastStatus?.is_broadcasting ? 1 : 0.35 }}></span>
-              {broadcastStatus?.is_broadcasting
-                ? `${t('player.onAir')} ${formatPlaybackTime(playbackSeconds)}`
-                : t('player.waitingForAir')}
-            </span>
-          </div>
         </div>
       </section>
 
@@ -366,7 +358,7 @@ function PlayerPage() {
                     fontWeight: 700,
                     fontFamily: 'PT Sans Caption, sans-serif',
                     fontSize: '1rem',
-                    color: 'var(--page-text, #000)',
+                    color: 'var(--page-text)',
                     marginBottom: '0.5rem',
                     lineHeight: 1.4,
                   }}
@@ -376,7 +368,7 @@ function PlayerPage() {
                 <p
                   style={{
                     fontSize: '0.75rem',
-                    color: 'var(--text-secondary, #666)',
+                    color: 'var(--text-secondary)',
                     textTransform: 'uppercase',
                     letterSpacing: '1px',
                     fontFamily: 'PT Sans Caption, sans-serif',
@@ -402,7 +394,7 @@ function PlayerPage() {
             )}
 
             {!broadcastStatus?.is_broadcasting && (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary, #666)' }}>
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
                 <svg width="56" height="56" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: 0.4, marginBottom: '1.5rem' }}>
                   <path
                     strokeLinecap="round"
@@ -412,7 +404,7 @@ function PlayerPage() {
                   />
                 </svg>
                 <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('player.noBroadcast')}</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #999)' }}>{t('player.waitForBroadcast')}</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('player.waitForBroadcast')}</p>
               </div>
             )}
           </div>
@@ -439,7 +431,7 @@ function PlayerPage() {
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                 <button type="submit" className="btn btn-primary">{t('player.send')}</button>
                 {!isRecording ? (
-                  <button type="button" className="btn btn-outline" onClick={startRecording} style={{ borderColor: '#666', color: 'var(--text-secondary, #666)' }}>
+                  <button type="button" className="btn btn-outline" onClick={startRecording} style={{ borderColor: 'var(--ttk-gray-light)', color: 'var(--text-secondary)' }}>
                     {t('player.recordVoice')}
                   </button>
                 ) : (
@@ -466,7 +458,7 @@ function PlayerPage() {
                   fontWeight: 700,
                   fontFamily: 'PT Sans Caption, sans-serif',
                   marginBottom: '1rem',
-                  color: 'var(--page-text, #000)',
+                  color: 'var(--page-text)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                 }}
@@ -487,19 +479,19 @@ function PlayerPage() {
                         transition: 'all 0.2s',
                       }}
                     >
-                      <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem', lineHeight: 1.5, color: 'var(--page-text, #333)' }}>{msg.text}</p>
+                      <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem', lineHeight: 1.5, color: 'var(--page-text)' }}>{msg.text}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className={`status-badge status-${msg.status}`}>
                           {getMessageStatusText(msg.status)}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #999)', fontFamily: 'PT Sans Caption, sans-serif' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'PT Sans Caption, sans-serif' }}>
                           {new Date(msg.created_at).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary, #999)' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                     <p style={{ fontSize: '0.85rem' }}>{t('player.noMessages')}</p>
                   </div>
                 )}

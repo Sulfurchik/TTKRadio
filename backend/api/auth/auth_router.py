@@ -49,7 +49,8 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
     if user_role is None:
         user_role = Role(name=RoleName.USER.value)
         db.add(user_role)
-        await db.flush()
+        await db.commit()
+        await db.refresh(user_role)
 
     user = User(
         login=request.login,
@@ -59,17 +60,18 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
     )
     db.add(user)
     await db.commit()
+    await db.refresh(user)
 
     created_user = await db.execute(
         select(User)
         .where(User.id == user.id)
         .options(selectinload(User.roles))
     )
-    user = created_user.scalar_one()
+    user_result = created_user.scalar_one()
 
     return RegisterResponse(
         message="Пользователь успешно зарегистрирован",
-        user=serialize_user(user),
+        user=serialize_user(user_result),
     )
 
 

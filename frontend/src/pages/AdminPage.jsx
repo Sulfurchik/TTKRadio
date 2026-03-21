@@ -353,8 +353,8 @@ function AdminPage() {
                   background: user.is_deleted ? 'rgba(0,0,0,0.03)' : 'transparent',
                   opacity: user.is_deleted ? 0.6 : 1
                 }}>
-                  <td style={{ fontWeight: 600 }}>{user.login}</td>
-                  <td>{user.fio}</td>
+                  <td style={{ fontWeight: 600, color: 'var(--page-text)' }}>{user.login}</td>
+                  <td style={{ color: 'var(--page-text)' }}>{user.fio}</td>
                   <td>
                       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                         {user.roles.map(role => (
@@ -396,8 +396,8 @@ function AdminPage() {
               <article key={`mobile-${user.id}`} className="admin-user-card">
                 <div className="admin-user-card__header">
                   <div>
-                    <div className="admin-user-card__login">{user.login}</div>
-                    <div className="admin-user-card__fio">{user.fio}</div>
+                    <div className="admin-user-card__login" style={{ fontWeight: 600, color: 'var(--page-text)' }}>{user.login}</div>
+                    <div className="admin-user-card__fio" style={{ color: 'var(--page-text)' }}>{user.fio}</div>
                   </div>
                   <span className={`status-badge ${user.is_deleted ? 'status-completed' : 'status-new'}`}>
                     {getUserStateLabel(user)}

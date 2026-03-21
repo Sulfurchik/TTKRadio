@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
-import logo from '../assets/login-logo.png'
+import logo from '../assets/logo.svg'
 
 const ROLE_KEY_BY_NAME = {
   Пользователь: 'user',
@@ -51,7 +51,7 @@ function Navbar() {
             <span>{t('navbar.air')}</span>
           </Link>
 
-          {hasRole(['Ведущий', 'Администратор']) && (
+          {hasRole(['Ведущий']) && (
             <Link
               to="/host"
               className={`nav-link ${location.pathname === '/host' ? 'active' : ''}`}

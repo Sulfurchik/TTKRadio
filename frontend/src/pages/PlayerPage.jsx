@@ -4,6 +4,7 @@ import StatusBanner from '../components/StatusBanner'
 import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { playerService } from '../services'
 import { formatPlaybackTime } from '../utils/broadcastSync'
+import { getMediaDisplayName } from '../utils/media'
 
 
 function PlayerPage() {
@@ -138,17 +139,16 @@ function PlayerPage() {
 
       <section className="page-hero page-hero--player">
         <div className="page-hero__content">
-          <span className="page-hero__eyebrow">Live Broadcast</span>
+          <span className="page-hero__eyebrow">Эфир</span>
           <h1 className="page-hero__title">Прямой эфир</h1>
           <p className="page-hero__description">
-            Любой слушатель подключается к эфиру на актуальной секунде, а не с начала трека.
+            Синхронизированное воспроизведение текущего эфира.
           </p>
           <div className="page-hero__chips">
             <span className={`hero-chip ${broadcastStatus?.is_broadcasting ? 'hero-chip--live' : ''}`}>
               <span className="recording-dot" style={{ opacity: broadcastStatus?.is_broadcasting ? 1 : 0.35 }}></span>
               {broadcastStatus?.is_broadcasting ? `В эфире ${formatPlaybackTime(playbackSeconds)}` : 'Ожидание эфира'}
             </span>
-            <span className="hero-chip">{currentTrack ? currentTrack.original_name : 'Нет активного трека'}</span>
           </div>
         </div>
       </section>
@@ -314,7 +314,7 @@ function PlayerPage() {
                     lineHeight: 1.4,
                   }}
                 >
-                  {currentTrack.original_name}
+                  {getMediaDisplayName(currentTrack.original_name)}
                 </p>
                 <p
                   style={{

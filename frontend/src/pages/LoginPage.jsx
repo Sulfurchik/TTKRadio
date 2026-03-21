@@ -47,7 +47,7 @@ function LoginPage() {
           <h1 className="auth-title" style={{ fontSize: '45px', fontWeight: 'bold' }}>
           Вход в систему
           </h1>
-          <p className="auth-subtitle">Система управления потоковым вещанием</p>
+          <p className="auth-subtitle">Доступ к системе вещания</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -133,7 +133,7 @@ function LoginPage() {
             Pixel Minds
           </p>
           <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0' }}>
-            Система управления потоковым вещанием
+            Платформа потокового вещания
           </p>
         </div>
       </div>

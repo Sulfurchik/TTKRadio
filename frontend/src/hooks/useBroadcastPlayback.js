@@ -125,6 +125,7 @@ export function useBroadcastPlayback({
       status.is_broadcasting && (options.forcePlay || (autoResume && !userPausedRef.current))
 
     if (!shouldPlay) {
+      setIsBuffering(false)
       return
     }
 
@@ -135,8 +136,10 @@ export function useBroadcastPlayback({
     try {
       await audio.play()
       setIsAudioPlaying(true)
+      setIsBuffering(false)
     } catch (error) {
       setIsAudioPlaying(false)
+      setIsBuffering(false)
       console.debug('Автовоспроизведение было заблокировано браузером', error)
     }
   }
@@ -278,8 +281,15 @@ export function useBroadcastPlayback({
       setIsAudioPlaying(true)
       setIsBuffering(false)
     }
-    const handlePause = () => setIsAudioPlaying(false)
-    const handleWaiting = () => setIsBuffering(true)
+    const handlePause = () => {
+      setIsAudioPlaying(false)
+      setIsBuffering(false)
+    }
+    const handleWaiting = () => {
+      if (!audio.paused) {
+        setIsBuffering(true)
+      }
+    }
     const handlePlaying = () => setIsBuffering(false)
     const handleEnded = () => {
       setIsAudioPlaying(false)

@@ -357,10 +357,10 @@ function HostPage() {
 
       <section className="page-hero">
         <div className="page-hero__content">
-          <span className="page-hero__eyebrow">Studio Control</span>
+          <span className="page-hero__eyebrow">Панель управления</span>
           <h1 className="page-hero__title">Панель ведущего</h1>
           <p className="page-hero__description">
-            Управляйте эфиром, плейлистами и сообщениями слушателей с одной панели без лишних скачков громкости.
+            Управление эфиром, плейлистами и сообщениями слушателей.
           </p>
           <div className="page-hero__chips">
             <span className={`hero-chip ${isLive ? 'hero-chip--live' : ''}`}>

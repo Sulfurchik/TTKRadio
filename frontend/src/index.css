@@ -329,6 +329,13 @@ select {
   flex-shrink: 0;
 }
 
+.navbar-mobile-logout {
+  display: none;
+  width: 2.75rem;
+  padding-inline: 0;
+  justify-self: end;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1289,7 +1296,7 @@ select {
   }
 
   .navbar-content {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .user-info {
@@ -1297,7 +1304,11 @@ select {
   }
 
   .navbar-menu {
-    width: min(100%, 12.75rem);
+    width: min(100%, 10.75rem);
+  }
+
+  .navbar-mobile-logout {
+    display: inline-flex;
   }
 
   .nav-link {

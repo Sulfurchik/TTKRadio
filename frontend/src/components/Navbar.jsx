@@ -60,6 +60,19 @@ function Navbar() {
           )}
         </div>
 
+        <button
+          type="button"
+          className="btn btn-outline btn-sm navbar-mobile-logout"
+          onClick={handleLogout}
+          title="Выйти из аккаунта"
+          aria-label="Выйти из аккаунта"
+        >
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H9" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 20H6a2 2 0 01-2-2V6a2 2 0 012-2h7" />
+          </svg>
+        </button>
+
         <div className="user-info">
           <div className="navbar-user-copy">
             <div className="user-name">{user?.fio}</div>

@@ -79,7 +79,7 @@ function RegisterPage() {
             }}
           />
           <h1 className="auth-title">Регистрация</h1>
-          <p className="auth-subtitle">Создание учетной записи</p>
+          <p className="auth-subtitle">Регистрация учетной записи</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -203,7 +203,7 @@ function RegisterPage() {
             АО «Компания ТрансТелеКом»
           </p>
           <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0' }}>
-            Система управления потоковым вещанием
+            Платформа потокового вещания
           </p>
         </div>
       </div>

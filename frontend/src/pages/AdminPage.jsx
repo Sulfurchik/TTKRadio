@@ -5,9 +5,9 @@ import StatusBanner from '../components/StatusBanner'
 
 
 const ROLE_DESCRIPTIONS = {
-  Пользователь: 'Слушает эфир, отправляет текстовые и голосовые сообщения.',
-  Ведущий: 'Управляет медиатекой, плейлистами и ходом эфира.',
-  Администратор: 'Управляет пользователями и при необходимости может быть ведущим.',
+  Пользователь: 'Доступ к эфиру и отправке сообщений.',
+  Ведущий: 'Управление медиатекой, плейлистами и эфиром.',
+  Администратор: 'Администрирование пользователей и прав доступа.',
 }
 
 
@@ -238,10 +238,10 @@ function AdminPage() {
     <div className="container page-shell">
       <section className="page-hero page-hero--admin">
         <div className="page-hero__content">
-          <span className="page-hero__eyebrow">Admin Control</span>
+          <span className="page-hero__eyebrow">Администрирование</span>
           <h1 className="page-hero__title">Администрирование</h1>
           <p className="page-hero__description">
-            Управление пользователями, ролями и доступами без лишних всплывающих окон и перегруженных действий.
+            Управление пользователями, ролями и доступом.
           </p>
           <div className="page-hero__chips">
             <span className="hero-chip">Пользователей: {users.length}</span>

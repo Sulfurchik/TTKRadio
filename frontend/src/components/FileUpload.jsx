@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLanguage } from '../hooks/useLanguage'
 
-function FileUpload({ onUpload, onError, accept, maxSize, multiple = false }) {
+function FileUpload({ onUpload, onError, accept, maxSize, multiple = false, details = [] }) {
   const t = useLanguage(state => state.t)
   const language = useLanguage(state => state.language)
   const fileInputRef = useRef(null)
@@ -59,6 +59,15 @@ function FileUpload({ onUpload, onError, accept, maxSize, multiple = false }) {
       <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
         {t('fileUpload.formats')}: {accept?.join(', ') || t('fileUpload.any')}, {t('fileUpload.maxSize')}: {maxSize} {language === 'en' ? 'MB' : 'МБ'}
       </p>
+      {details.length > 0 && (
+        <div className="upload-zone__details">
+          {details.map((detail) => (
+            <p key={detail} className="upload-zone__detail">
+              {detail}
+            </p>
+          ))}
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"

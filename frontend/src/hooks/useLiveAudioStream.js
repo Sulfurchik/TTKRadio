@@ -1,24 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { buildWebSocketUrl, getSupportedLiveStreamPlaybackMimeType } from '../utils/liveStream'
+import { buildWebSocketUrl } from '../utils/liveStream'
 
 
-function safelyParseMessage(value) {
-  try {
-    return JSON.parse(value)
-  } catch (error) {
-    return null
-  }
-}
-
-function resetAudioElement(audio) {
-  if (!audio) {
-    return
-  }
-
-  audio.pause()
-  audio.removeAttribute('src')
-  audio.load()
+function revokeQueue(queue) {
+  queue.forEach((item) => {
+    if (item?.url) {
+      URL.revokeObjectURL(item.url)
+    }
+  })
 }
 
 export function useLiveAudioStream({
@@ -29,37 +19,33 @@ export function useLiveAudioStream({
 }) {
   const audioRef = useRef(null)
   const websocketRef = useRef(null)
-  const mediaSourceRef = useRef(null)
-  const sourceBufferRef = useRef(null)
-  const queueRef = useRef([])
-  const objectUrlRef = useRef(null)
-  const streamIdleTimeoutRef = useRef(null)
   const pingIntervalRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
   const shouldReconnectRef = useRef(false)
-  const isActiveRef = useRef(Boolean(initiallyActive))
+  const chunkQueueRef = useRef([])
+  const isChunkPlayingRef = useRef(false)
 
   const [isConnected, setIsConnected] = useState(false)
   const [isStreamActive, setIsStreamActive] = useState(Boolean(initiallyActive))
 
-  const updateActiveState = (nextState) => {
-    isActiveRef.current = nextState
-    setIsStreamActive(nextState)
-  }
-
-  const flushQueue = () => {
-    const sourceBuffer = sourceBufferRef.current
-    if (!sourceBuffer || sourceBuffer.updating || queueRef.current.length === 0) {
+  const playNextChunk = () => {
+    const audio = audioRef.current
+    if (!audio || isChunkPlayingRef.current || chunkQueueRef.current.length === 0) {
       return
     }
 
-    const nextChunk = queueRef.current.shift()
-    try {
-      sourceBuffer.appendBuffer(nextChunk)
-    } catch (error) {
-      queueRef.current = []
-      console.error('Не удалось добавить live-аудио в буфер', error)
+    const nextChunk = chunkQueueRef.current.shift()
+    if (!nextChunk) {
+      return
     }
+
+    isChunkPlayingRef.current = true
+    audio.src = nextChunk.url
+    audio.play().catch(() => {
+      isChunkPlayingRef.current = false
+      URL.revokeObjectURL(nextChunk.url)
+      playNextChunk()
+    })
   }
 
   useEffect(() => {
@@ -70,56 +56,39 @@ export function useLiveAudioStream({
   }, [volume])
 
   useEffect(() => {
-    updateActiveState(Boolean(initiallyActive))
+    setIsStreamActive(Boolean(initiallyActive))
   }, [initiallyActive])
 
   useEffect(() => {
-    if (!enabled || !websocketUrl) {
+    const audio = audioRef.current
+    if (!audio || !enabled || !websocketUrl) {
       shouldReconnectRef.current = false
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current)
       }
-      if (streamIdleTimeoutRef.current) {
-        clearTimeout(streamIdleTimeoutRef.current)
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
       }
       websocketRef.current?.close()
       websocketRef.current = null
-      sourceBufferRef.current = null
-      mediaSourceRef.current = null
-      queueRef.current = []
       setIsConnected(false)
-      updateActiveState(false)
-
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current)
-        objectUrlRef.current = null
+      setIsStreamActive(false)
+      isChunkPlayingRef.current = false
+      revokeQueue(chunkQueueRef.current)
+      chunkQueueRef.current = []
+      if (audio) {
+        audio.pause()
+        audio.removeAttribute('src')
+        audio.load()
       }
-      resetAudioElement(audioRef.current)
-      return undefined
-    }
-
-    const audio = audioRef.current
-    const playbackMimeType = getSupportedLiveStreamPlaybackMimeType()
-    if (!audio || !playbackMimeType) {
       return undefined
     }
 
     shouldReconnectRef.current = true
-    queueRef.current = []
-
-    const mediaSource = new MediaSource()
-    mediaSourceRef.current = mediaSource
-    objectUrlRef.current = URL.createObjectURL(mediaSource)
-    audio.src = objectUrlRef.current
-    audio.autoplay = true
-    audio.playsInline = true
 
     const connect = () => {
       const socket = new WebSocket(buildWebSocketUrl(websocketUrl))
-      socket.binaryType = 'arraybuffer'
+      socket.binaryType = 'blob'
       websocketRef.current = socket
 
       socket.onopen = () => {
@@ -134,33 +103,30 @@ export function useLiveAudioStream({
 
       socket.onmessage = async (event) => {
         if (typeof event.data === 'string') {
-          const payload = safelyParseMessage(event.data)
-          if (payload?.type === 'live_audio_start') {
-            updateActiveState(true)
+          if (event.data.includes('live_audio_start')) {
+            setIsStreamActive(true)
           }
-          if (payload?.type === 'live_audio_stop') {
-            updateActiveState(false)
+          if (event.data.includes('live_audio_stop')) {
+            setIsStreamActive(false)
             audio.pause()
+            audio.removeAttribute('src')
+            audio.load()
+            isChunkPlayingRef.current = false
+            revokeQueue(chunkQueueRef.current)
+            chunkQueueRef.current = []
           }
           return
         }
 
-        const arrayBuffer = event.data instanceof ArrayBuffer
-          ? event.data
-          : await event.data.arrayBuffer()
-        queueRef.current.push(new Uint8Array(arrayBuffer))
-        updateActiveState(true)
-
-        if (streamIdleTimeoutRef.current) {
-          clearTimeout(streamIdleTimeoutRef.current)
+        const blob = event.data instanceof Blob ? event.data : new Blob([await event.data.arrayBuffer()], { type: 'audio/webm' })
+        if (blob.size === 0) {
+          return
         }
-        streamIdleTimeoutRef.current = window.setTimeout(() => {
-          updateActiveState(false)
-          audio.pause()
-        }, 1600)
 
-        flushQueue()
-        audio.play().catch(() => {})
+        const url = URL.createObjectURL(blob)
+        chunkQueueRef.current.push({ url })
+        setIsStreamActive(true)
+        playNextChunk()
       }
 
       socket.onclose = () => {
@@ -169,7 +135,7 @@ export function useLiveAudioStream({
           clearInterval(pingIntervalRef.current)
         }
         if (shouldReconnectRef.current) {
-          reconnectTimeoutRef.current = window.setTimeout(connect, 1800)
+          reconnectTimeoutRef.current = window.setTimeout(connect, 1600)
         }
       }
 
@@ -178,23 +144,17 @@ export function useLiveAudioStream({
       }
     }
 
-    const handleSourceOpen = () => {
-      if (!mediaSourceRef.current || mediaSourceRef.current.readyState !== 'open') {
-        return
+    const handleEnded = () => {
+      const currentUrl = audio.currentSrc
+      if (currentUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(currentUrl)
       }
-
-      try {
-        const sourceBuffer = mediaSourceRef.current.addSourceBuffer(playbackMimeType)
-        sourceBuffer.mode = 'sequence'
-        sourceBuffer.addEventListener('updateend', flushQueue)
-        sourceBufferRef.current = sourceBuffer
-        connect()
-      } catch (error) {
-        console.error('Не удалось подготовить live-аудио поток', error)
-      }
+      isChunkPlayingRef.current = false
+      playNextChunk()
     }
 
-    mediaSource.addEventListener('sourceopen', handleSourceOpen)
+    connect()
+    audio.addEventListener('ended', handleEnded)
 
     return () => {
       shouldReconnectRef.current = false
@@ -204,22 +164,15 @@ export function useLiveAudioStream({
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }
-      if (streamIdleTimeoutRef.current) {
-        clearTimeout(streamIdleTimeoutRef.current)
-      }
-      mediaSource.removeEventListener('sourceopen', handleSourceOpen)
+      audio.removeEventListener('ended', handleEnded)
       websocketRef.current?.close()
       websocketRef.current = null
-      sourceBufferRef.current = null
-      mediaSourceRef.current = null
-      queueRef.current = []
-      setIsConnected(false)
-      updateActiveState(false)
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current)
-        objectUrlRef.current = null
-      }
-      resetAudioElement(audio)
+      revokeQueue(chunkQueueRef.current)
+      chunkQueueRef.current = []
+      isChunkPlayingRef.current = false
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
     }
   }, [enabled, websocketUrl])
 

@@ -54,6 +54,9 @@ function AdminPage() {
     loadRoles()
   }, [])
 
+  const adminUsersCount = users.filter(user => user.roles.some(role => role.name === 'Администратор')).length
+  const hostUsersCount = users.filter(user => user.roles.some(role => role.name === 'Ведущий')).length
+
   const getRoleKey = (roleName) => ROLE_KEY_BY_NAME[roleName]
   const getRoleLabel = (roleName) => {
     const roleKey = getRoleKey(roleName)
@@ -259,7 +262,8 @@ function AdminPage() {
           </p>
           <div className="page-hero__chips">
             <span className="hero-chip">{t('admin.usersCount')}: {users.length}</span>
-            <span className="hero-chip">{t('admin.rolesCount')}: {roles.length}</span>
+            <span className="hero-chip">{t('admin.adminsCount')}: {adminUsersCount}</span>
+            <span className="hero-chip">{t('admin.hostsCount')}: {hostUsersCount}</span>
           </div>
         </div>
       </section>

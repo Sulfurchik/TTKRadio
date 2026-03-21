@@ -495,7 +495,7 @@ function HostPage() {
         try {
           await hostService.startLiveAudioBroadcast()
           socket.send(JSON.stringify({ type: 'live_audio_start' }))
-          recorder.start(250)
+          recorder.start(900)
           setIsLiveMicActive(true)
           setIsLiveMicConnecting(false)
           await refreshStatus()
@@ -915,15 +915,11 @@ function HostPage() {
               onError={(text) => setNotice({ type: 'error', text })}
               accept={['mp3', 'wav', 'ogg', 'mp4', 'webm']}
               maxSize={1000}
+              details={[
+                t('host.audioUploadRules'),
+                t('host.videoUploadRules'),
+              ]}
             />
-
-            <div className="upload-rules-grid">
-              <div className="glass-panel upload-rule-card">
-                <div className="card-title" style={{ marginBottom: '0.45rem', fontSize: '0.95rem' }}>{t('host.uploadRulesTitle')}</div>
-                <p className="section-subtitle" style={{ marginBottom: '0.35rem' }}>{t('host.audioUploadRules')}</p>
-                <p className="section-subtitle" style={{ marginBottom: 0 }}>{t('host.videoUploadRules')}</p>
-              </div>
-            </div>
 
             <div
               style={{

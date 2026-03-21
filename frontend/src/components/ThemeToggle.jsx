@@ -18,6 +18,7 @@ function ThemeToggle() {
       <span className="theme-toggle__icon" aria-hidden="true">
         {isDark ? '☀' : '☾'}
       </span>
+      <span>{t('navbar.theme')}</span>
     </button>
   )
 }

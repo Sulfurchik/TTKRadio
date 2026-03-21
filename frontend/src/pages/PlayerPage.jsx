@@ -19,6 +19,7 @@ function PlayerPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [voiceFile, setVoiceFile] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [isPlayerManuallyPaused, setIsPlayerManuallyPaused] = useState(false)
   const [volume, setVolume] = useState(() => {
     const saved = localStorage.getItem('player_volume')
     return saved ? parseFloat(saved) : 0.8
@@ -56,7 +57,7 @@ function PlayerPage() {
     audioRef: liveAudioRef,
     isStreamActive: isLiveStreamActive,
   } = useLiveAudioStream({
-    enabled: Boolean(broadcastStatus?.is_broadcasting && broadcastStatus?.websocket_url),
+    enabled: Boolean(broadcastStatus?.is_broadcasting && broadcastStatus?.websocket_url && !isPlayerManuallyPaused),
     websocketUrl: broadcastStatus?.websocket_url || null,
     volume: effectiveBroadcastVolume,
     initiallyActive: Boolean(broadcastStatus?.live_audio_active),
@@ -81,6 +82,14 @@ function PlayerPage() {
   useEffect(() => {
     setLiveMicHintVisible(Boolean(broadcastStatus?.live_audio_active || isLiveStreamActive))
   }, [broadcastStatus?.live_audio_active, isLiveStreamActive])
+
+  useEffect(() => {
+    if (broadcastStatus?.is_broadcasting) {
+      return
+    }
+
+    setIsPlayerManuallyPaused(false)
+  }, [broadcastStatus?.is_broadcasting])
 
   useEffect(() => {
     const video = videoRef.current
@@ -159,11 +168,13 @@ function PlayerPage() {
     }
 
     if (isAudioPlaying) {
+      setIsPlayerManuallyPaused(true)
       pause()
       liveAudioRef.current?.pause()
       return
     }
 
+    setIsPlayerManuallyPaused(false)
     await play()
     liveAudioRef.current?.play().catch(() => {})
   }

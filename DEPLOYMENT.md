@@ -1,345 +1,199 @@
-# 🚀 TransCom Stream - Production Deployment Guide
+# TransCom Stream Deployment Guide
 
-## 📋 Обзор
+## Recommended path
 
-Система управления потоковым вещанием для АО «Компания ТрансТелеКом»
+For the hackathon version, the simplest and most reliable production setup is:
 
-**Стек:**
-- Backend: Python 3.11 + FastAPI + PostgreSQL
-- Frontend: React 18 + Vite
-- Streaming: WebSocket (real-time audio)
-- Deployment: Docker / Systemd + Nginx
+- Ubuntu server
+- `nginx` for public access
+- `systemd` for backend process management
+- SQLite by default
 
----
+This is exactly what `install.sh` now configures. It avoids the most common deployment failures from missing venvs, wrong `DATABASE_URL`, broken nginx proxying, and frontend/backend port mismatches.
 
-## 🔒 Безопасность
+## Before you start
 
-### Реализованные меры:
-1. **Хеширование паролей** - bcrypt
-2. **JWT аутентификация** - токены с expiration
-3. **CORS защита** - настроенные origins
-4. **Валидация входных данных** - Pydantic schemas
-5. **Soft delete** - сохранение истории
-6. **Проверка ролей** - middleware авторизация
-7. **SQL injection защита** - SQLAlchemy ORM
-8. **XSS защита** - React escaping
-9. **Security headers** - в Nginx конфигурации
+Prepare these things first:
 
-### Требуется изменить перед production:
+1. Point your subdomain to the server public IP with an `A` record.
+2. Open ports `80`, `443`, and `22` in your cloud/firewall settings.
+3. Copy the project to the server.
+
+Example:
+
 ```bash
-# 1. SECRET_KEY (минимум 32 символа)
-SECRET_KEY=your-random-32-char-secret-key-here
-
-# 2. Пароль базы данных
-DB_PASSWORD=strong-password-here
-
-# 3. CORS origins
-CORS_ORIGINS=["https://your-domain.com"]
-
-# 4. SSL сертификаты (Let's Encrypt)
-certbot --nginx -d your-domain.com
+scp -r ./transcom-stream user@your-server:/home/user/
+ssh user@your-server
+cd /home/user/transcom-stream
 ```
 
----
+## One-command install
 
-## 📦 Варианты деплоя
-
-### Вариант 1: Docker Compose (Рекомендуется)
+HTTP only:
 
 ```bash
-# 1. Клонировать репозиторий
-git clone <repository-url>
-cd transcom-stream
-
-# 2. Настроить переменные окружения
-cp .env.example .env
-# Отредактировать .env с вашими значениями
-
-# 3. Запустить
-docker-compose up -d
-
-# 4. Проверить логи
-docker-compose logs -f
+sudo ./install.sh --domain radio.example.com --public-ip 203.0.113.10 --no-ssl
 ```
 
-**Порты:**
-- 80: HTTP
-- 443: HTTPS (после настройки SSL)
-
-### Вариант 2: Systemd + Nginx (Ubuntu/Debian)
+HTTPS with Let's Encrypt:
 
 ```bash
-# 1. Скопировать файлы на сервер
-scp -r transcom-stream user@server:/var/www/
+sudo ./install.sh \
+  --domain radio.example.com \
+  --public-ip 203.0.113.10 \
+  --email ops@example.com
+```
 
-# 2. Запустить скрипт деплоя
-sudo ./deploy.sh production
+What the script does:
 
-# 3. Проверить статус
+- installs system packages on Ubuntu
+- installs Node.js 20 if needed
+- creates `/opt/transcom-stream`
+- copies the project there
+- creates Python venv and installs backend dependencies
+- installs frontend dependencies and builds `dist`
+- creates backend `.env`
+- initializes database, roles, and default admin
+- creates `systemd` service `transcom-stream`
+- creates nginx config and publishes the site
+- optionally requests SSL certificate via Let's Encrypt
+
+## After install
+
+Check statuses:
+
+```bash
 systemctl status transcom-stream
 systemctl status nginx
 ```
 
-### Вариант 3: Ручная установка
-
-#### Backend:
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install gunicorn
-
-# Запуск
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app -b 0.0.0.0:8000
-```
-
-#### Frontend:
-```bash
-cd frontend
-npm install
-npm run build
-
-# Serve через nginx или node
-npm install -g serve
-serve -s dist -l 3000
-```
-
----
-
-## 🗄️ База данных
-
-### PostgreSQL (Production):
-```sql
-CREATE DATABASE transcom_stream;
-CREATE USER transcom WITH PASSWORD 'your-password';
-GRANT ALL PRIVILEGES ON DATABASE transcom_stream TO transcom;
-```
-
-### SQLite (Development):
-Автоматически создается при первом запуске.
-
-### Миграции:
-```bash
-cd backend
-alembic upgrade head
-```
-
----
-
-## 🔧 Конфигурация
-
-### Переменные окружения (.env):
+Health checks:
 
 ```bash
-# Application
-APP_NAME=TransCom Stream
-DEBUG=False
-
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/transcom_stream
-
-# Security
-SECRET_KEY=minimum-32-character-random-string
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-# CORS
-CORS_ORIGINS=["https://your-domain.com"]
-
-# Files
-MAX_AUDIO_SIZE_MB=50
-MAX_VIDEO_SIZE_MB=1000
-STORAGE_PATH=/var/www/transcom-stream/storage
+curl http://127.0.0.1:8000/health
+curl -I http://radio.example.com
 ```
 
----
+Open in browser:
 
-## 🌐 Nginx конфигурация
+- `https://radio.example.com`
+- `https://radio.example.com/docs`
 
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    
-    # Frontend
-    location / {
-        root /var/www/transcom-stream/frontend/dist;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    # Backend API
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    # WebSocket
-    location /api/stream/ws {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_read_timeout 86400;
-    }
-    
-    # Static files
-    location /storage {
-        alias /var/www/transcom-stream/backend/storage;
-        expires 30d;
-    }
-}
-```
+Default admin:
 
----
+- login: `admin`
+- password: `admin123`
 
-## 📊 Мониторинг
+If you passed `--admin-login` or `--admin-password`, use those values instead.
 
-### Логи:
+## Update deployment
+
+When you change the code:
+
 ```bash
-# Application logs
+cd /home/user/transcom-stream
+git pull
+sudo ./install.sh --domain radio.example.com --public-ip 203.0.113.10 --email ops@example.com
+```
+
+The script is intended to be rerun. It refreshes the deployed code, rebuilds frontend, and restarts services.
+
+## Where things live
+
+- app files: `/opt/transcom-stream`
+- backend env: `/opt/transcom-stream/backend/.env`
+- uploaded files: `/opt/transcom-stream/backend/storage`
+- backend service: `transcom-stream`
+- nginx site: `/etc/nginx/sites-available/transcom-stream`
+
+## Useful commands
+
+Backend logs:
+
+```bash
 journalctl -u transcom-stream -f
-
-# Nginx logs
-tail -f /var/log/transcom-stream/access.log
-tail -f /var/log/transcom-stream/error.log
-
-# Docker logs
-docker-compose logs -f backend
-docker-compose logs -f nginx
 ```
 
-### Health checks:
+Restart backend:
+
 ```bash
-# Backend health
-curl http://localhost:8000/health
-
-# Frontend
-curl http://localhost/
-
-# WebSocket test
-wscat -c ws://localhost:8000/api/stream/ws/listen
+sudo systemctl restart transcom-stream
 ```
 
----
+Reload nginx:
 
-## 🔐 Пользователи по умолчанию
-
-После первого запуска создается:
-- **Логин:** `admin`
-- **Пароль:** `admin123`
-- **Роль:** Администратор
-
-**Смените пароль сразу после первого входа!**
-
----
-
-## 📱 API Endpoints
-
-### Auth
-- `POST /api/auth/login` - Вход
-- `POST /api/auth/register` - Регистрация
-- `GET /api/auth/me` - Текущий пользователь
-
-### Admin (Администратор)
-- `GET /api/admin/users` - Список пользователей
-- `PUT /api/admin/users/:id` - Редактировать
-- `DELETE /api/admin/users/:id` - Удалить (soft)
-- `POST /api/admin/users/:id/password` - Смена пароля
-- `POST /api/admin/users/:id/roles` - Назначить роли
-
-### Player (Все авторизованные)
-- `GET /api/player/stream` - URL потока
-- `POST /api/player/messages` - Отправить сообщение
-- `POST /api/player/voice` - Голосовое сообщение
-
-### Host (Ведущий/Администратор)
-- `GET /api/host/media` - Медиатека
-- `POST /api/host/media/upload` - Загрузка
-- `GET /api/host/playlists` - Плейлисты
-- `POST /api/host/broadcast/start` - Начать вещание
-
-### Streaming (WebSocket)
-- `WS /api/stream/ws/listen` - Прослушивание
-- `WS /api/stream/ws/host/:id` - Вещание
-
----
-
-## 🐛 Troubleshooting
-
-### Backend не запускается:
 ```bash
-# Проверить логи
-journalctl -u transcom-stream -n 50
-
-# Проверить БД
-sudo -u postgres psql -c "\l" | grep transcom
-
-# Перезапустить
-systemctl restart transcom-stream
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### Frontend не загружается:
-```bash
-# Пересобрать
-cd frontend
-npm run build
+## PostgreSQL instead of SQLite
 
-# Проверить nginx
+The default installer uses SQLite because it is the fastest stable path for the hackathon build.
+
+If you want PostgreSQL later:
+
+1. install PostgreSQL yourself
+2. create a database and user
+3. set `DATABASE_URL` in `/opt/transcom-stream/backend/.env`
+
+Use async SQLAlchemy URL format:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://transcom:strong-password@127.0.0.1:5432/transcom_stream
+```
+
+Then restart:
+
+```bash
+sudo systemctl restart transcom-stream
+```
+
+## Troubleshooting
+
+### 502 Bad Gateway
+
+Usually backend service is down.
+
+```bash
+systemctl status transcom-stream
+journalctl -u transcom-stream -n 100 --no-pager
+```
+
+### Domain opens, but API calls fail
+
+Check nginx proxy and backend health:
+
+```bash
+curl http://127.0.0.1:8000/health
 nginx -t
-systemctl restart nginx
 ```
 
-### WebSocket не подключается:
+### SSL certificate failed
+
+Most common causes:
+
+- DNS is not pointed to the server yet
+- port `80` is closed
+- nginx is already bound with broken config
+
+Retry after fixing DNS/firewall:
+
 ```bash
-# Проверить firewall
-ufw status
-
-# Разрешить порты
-ufw allow 80/tcp
-ufw allow 443/tcp
+sudo certbot --nginx -d radio.example.com
 ```
 
----
+### Frontend works, uploads fail
 
-## 📈 Производительность
+Check nginx upload limit and storage permissions:
 
-### Оптимизации:
-1. **Gunicorn workers:** 4 (CPU cores * 2 + 1)
-2. **Static files:** Nginx caching
-3. **Database:** Connection pooling
-4. **Frontend:** Code splitting, lazy loading
-
-### Масштабирование:
 ```bash
-# Увеличить workers
-systemctl edit transcom-stream
-# Добавить: Environment=GUNICORN_WORKERS=8
-
-# Horizontal scaling с Docker
-docker-compose up -d --scale backend=3
+ls -la /opt/transcom-stream/backend/storage
 ```
 
----
+### You changed `.env`, but nothing changed in app
 
-## 📞 Поддержка
+Restart backend:
 
-При возникновении проблем:
-1. Проверьте логи
-2. Проверьте переменные окружения
-3. Убедитесь что БД доступна
-4. Проверьте firewall правила
-
----
-
-**Версия:** 1.0.0  
-**Дата обновления:** 2026-03-20
+```bash
+sudo systemctl restart transcom-stream
+```

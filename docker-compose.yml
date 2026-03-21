@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: ttk_backend
     environment:
-      DATABASE_URL: postgresql://transcom:${DB_PASSWORD:-change_this_password}@postgres:5432/transcom_stream
+      DATABASE_URL: postgresql+asyncpg://transcom:${DB_PASSWORD:-change_this_password}@postgres:5432/transcom_stream
       SECRET_KEY: ${SECRET_KEY:-change_this_secret_key}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
     volumes:

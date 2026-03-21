@@ -59,30 +59,13 @@
 ### 1. Установка
 
 ```bash
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Frontend
-cd frontend
-npm install
+./install.sh --help
 ```
 
-### 2. Запуск
+### 2. Локальный запуск
 
-**Терминал 1 - Backend:**
 ```bash
-cd backend
-source venv/bin/activate
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-**Терминал 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
+./start.sh
 ```
 
 ### 3. Доступ
@@ -96,6 +79,18 @@ npm run dev
 **Администратор:**
 - Логин: `admin`
 - Пароль: `admin123`
+
+### 5. Ubuntu server / internet access
+
+Полный production-гайд и one-command installer:
+
+- [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+Коротко:
+
+```bash
+sudo ./install.sh --domain radio.example.com --public-ip 203.0.113.10 --email ops@example.com
+```
 
 ---
 

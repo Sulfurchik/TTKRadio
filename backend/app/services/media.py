@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import aiofiles
 from fastapi import HTTPException, UploadFile, status
+from mutagen import File as MutagenFile
 from mutagen.mp3 import MP3
 from mutagen.oggvorbis import OggVorbis
 from mutagen.wave import WAVE
@@ -90,6 +91,11 @@ def get_media_duration(relative_path: str) -> float:
             return float(WAVE(file_path).info.length)
         if suffix == ".ogg":
             return float(OggVorbis(file_path).info.length)
+        parsed_file = MutagenFile(file_path)
+        if parsed_file is not None and getattr(parsed_file, "info", None) is not None:
+            length = getattr(parsed_file.info, "length", None)
+            if length is not None:
+                return float(length)
     except Exception:
         return 0.0
     return 0.0

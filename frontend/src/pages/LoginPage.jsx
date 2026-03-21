@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
 import loginLogo from '../assets/login-logo.png'
 
 function LoginPage() {
   const navigate = useNavigate()
+  const t = useLanguage(state => state.t)
   const { login } = useAuthStore()
   const [formData, setFormData] = useState({ login: '', password: '' })
   const [error, setError] = useState('')
@@ -19,7 +21,7 @@ function LoginPage() {
       await login(formData.login, formData.password)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка входа')
+      setError(err.response?.data?.detail || t('auth.loginError'))
     } finally {
       setLoading(false)
     }
@@ -33,7 +35,7 @@ function LoginPage() {
           textAlign: 'left',
           marginBottom: '2rem',
           paddingBottom: '1.5rem',
-          borderBottom: '2px solid #e0e0e0'
+          borderBottom: '2px solid var(--ttk-border)'
         }}>
           <img 
             src={loginLogo} 
@@ -45,33 +47,33 @@ function LoginPage() {
             }}
           />
           <h1 className="auth-title" style={{ fontSize: '45px', fontWeight: 'bold' }}>
-          Вход в систему
+          {t('auth.loginTitle')}
           </h1>
-          <p className="auth-subtitle">Доступ к системе вещания</p>
+          <p className="auth-subtitle">{t('auth.loginSubtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label className="form-label">Логин</label>
+            <label className="form-label">{t('auth.login')}</label>
             <input
               type="text"
               className="form-input"
               value={formData.login}
               onChange={e => setFormData({ ...formData, login: e.target.value })}
-              placeholder="Введите ваш логин"
+              placeholder={t('auth.loginPlaceholder')}
               required
               autoComplete="username"
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Пароль</label>
+            <label className="form-label">{t('auth.password')}</label>
             <input
               type="password"
               className="form-input"
               value={formData.password}
               onChange={e => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Введите ваш пароль"
+              placeholder={t('auth.passwordPlaceholder')}
               required
               autoComplete="current-password"
             />
@@ -105,7 +107,7 @@ function LoginPage() {
             }} 
             disabled={loading}
           >
-            {loading ? 'Вход...' : 'Войти'}
+            {loading ? `${t('auth.loginButton')}...` : t('auth.loginButton')}
           </button>
         </form>
 
@@ -113,10 +115,10 @@ function LoginPage() {
           textAlign: 'center',
           marginTop: '1.5rem',
           paddingTop: '1.5rem',
-          borderTop: '1px solid #e0e0e0'
+          borderTop: '1px solid var(--ttk-border)'
         }}>
           <p className="auth-footer">
-            Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+            {t('auth.noAccount')} <Link to="/register">{t('auth.register')}</Link>
           </p>
         </div>
 
@@ -124,16 +126,16 @@ function LoginPage() {
         <div style={{
           marginTop: '2rem',
           padding: '1rem',
-          background: '#f8f9fa',
-          border: '1px solid #e0e0e0',
+          background: 'var(--muted-bg)',
+          border: '1px solid var(--ttk-border)',
           textAlign: 'center',
           borderRadius: 'var(--radius)'
         }}>
           <p style={{ fontSize: '0.75rem', color: '#666', margin: 0 }}>
             Pixel Minds
           </p>
-          <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0' }}>
-            Платформа потокового вещания
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>
+            {t('auth.platformName')}
           </p>
         </div>
       </div>

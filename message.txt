@@ -1,0 +1,324 @@
+Темная тема (селектор):
+
+     1 /* Было */
+     2 :root[data-theme='dark'] {
+     3
+     4 /* Стало */
+     5 html[data-theme="dark"] {
+
+    Фон body для темной темы:
+
+     1 html[data-theme="dark"] body {
+     2   background:
+     3     radial-gradient(circle at top left, rgba(229, 39, 19, 0.15), transparent 32%),
+     4     radial-gradient(circle at right 15%, rgba(180, 30, 15, 0.1), transparent 34%),
+     5     linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 45%, #0a0a0a 100%);
+     6   color: var(--ttk-gray-100);
+     7 }
+
+    Декоративные элементы body:
+
+     1 html[data-theme="dark"] body::before {
+     2   background: rgba(255, 102, 87, 0.14);
+     3 }
+     4
+     5 html[data-theme="dark"] body::after {
+     6   background: rgba(229, 39, 19, 0.1);
+     7 }
+
+    Transition для body:
+
+     1 body {
+     2   transition: background 0.4s ease, color 0.4s ease;
+     3 }
+
+    Transition для декоративных элементов:
+
+     1 body::before,
+     2 body::after {
+     3   transition: background 0.3s ease, opacity 0.3s ease;
+     4 }
+
+    Navbar:
+
+     1 .navbar {
+     2   border-bottom: 1px solid var(--ttk-border);
+     3   background: var(--navbar-bg);
+     4   transition: background 0.3s ease, border-color 0.3s ease;
+     5 }
+
+    Page hero:
+
+     1 .page-hero {
+     2   border: 1px solid var(--ttk-border);
+     3   background: var(--hero-bg);
+     4   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+     5 }
+
+    Hero chip:
+
+     1 .hero-chip {
+     2   border: 1px solid var(--ttk-border);
+     3   transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+     4 }
+
+    Nav link:
+
+     1 .nav-link {
+     2   transition: transform 0.2s ease, background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease;
+     3 }
+     4
+     5 .nav-link:hover {
+     6   background: var(--filter-bg);
+     7 }
+
+    Theme toggle:
+
+      1 .theme-toggle {
+      2   display: inline-flex;
+      3   align-items: center;
+      4   justify-content: center;
+      5   width: 2.75rem;
+      6   padding: 0;
+      7   color: var(--page-text);
+      8   transition: transform 0.18s ease, border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+      9 }
+     10
+     11 .theme-toggle__icon {
+     12   font-size: 1.1rem;
+     13 }
+
+    Role badge:
+
+     1 .role-badge {
+     2   background: var(--filter-bg);
+     3   transition: background 0.3s ease;
+     4 }
+
+    Card / Surface card:
+
+     1 .card,
+     2 .surface-card {
+     3   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+     4 }
+
+    Status banner:
+
+     1 .status-banner {
+     2   transition: background 0.3s ease, box-shadow 0.3s ease;
+     3 }
+
+    Form label:
+
+     1 .form-label {
+     2   color: var(--page-text);
+     3 }
+
+    Form input:
+
+      1 .form-input,
+      2 .messages-input {
+      3   border: 1px solid var(--ttk-border);
+      4   color: var(--page-text);
+      5   transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.18s ease, transform
+        0.18s ease;
+      6 }
+      7
+      8 .form-input:hover,
+      9 .messages-input:hover {
+     10   border-color: var(--ttk-border-strong);
+     11 }
+     12
+     13 .form-input:focus,
+     14 .messages-input:focus {
+     15   border-color: var(--ttk-red);
+     16   box-shadow: 0 0 0 4px rgba(229, 39, 19, 0.15);
+     17 }
+
+    Filters:
+
+     1 .filters {
+     2   border: 1px solid var(--ttk-border);
+     3   transition: background 0.3s ease, border-color 0.3s ease;
+     4 }
+
+    Table:
+
+      1 .table-container {
+      2   border: 1px solid var(--ttk-border);
+      3   transition: border-color 0.3s ease;
+      4 }
+      5
+      6 .table {
+      7   background: var(--table-bg);
+      8   transition: background 0.3s ease;
+      9 }
+     10
+     11 .table th,
+     12 .table td {
+     13   border-bottom: 1px solid var(--ttk-border);
+     14   transition: border-color 0.3s ease, background 0.3s ease;
+     15 }
+
+    Modal:
+
+     1 .modal-overlay {
+     2   transition: background 0.3s ease, backdrop-filter 0.3s ease;
+     3 }
+     4
+     5 .modal {
+     6   border: 1px solid var(--ttk-border);
+     7   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+     8 }
+
+    Player:
+
+     1 .player {
+     2   transition: background 0.3s ease;
+     3 }
+     4
+     5 .player-controls {
+     6   border: 1px solid var(--ttk-border);
+     7   transition: background 0.3s ease, border-color 0.3s ease;
+     8 }
+
+    Upload zone:
+
+      1 .upload-zone {
+      2   border: 1.5px dashed var(--ttk-border-strong);
+      3   transition: border-color 0.3s ease, transform 0.18s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+      4 }
+      5
+      6 .upload-zone--active,
+      7 .upload-zone:hover {
+      8   border-color: var(--ttk-red);
+      9   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.15);
+     10 }
+
+    Btn:
+
+     1 .btn {
+     2   transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.3s ease, color 0.3s ease,
+       border-color 0.3s ease;
+     3 }
+
+    Анимация themeFade:
+
+      1 @keyframes themeFade {
+      2   0% {
+      3     opacity: 1;
+      4   }
+      5   50% {
+      6     opacity: 0.85;
+      7   }
+      8   100% {
+      9     opacity: 1;
+     10   }
+     11 }
+
+    ---
+
+    2. frontend/src/components/ThemeToggle.jsx
+
+     1 // Было
+     2 <span className="theme-toggle__label">
+     3   {isDark ? 'Светлая' : 'Темная'}
+     4 </span>
+     5
+     6 // Стало - убран текст, оставлена только иконка
+
+    ---
+
+    3. frontend/src/App.jsx
+
+      1 // Было
+      2 const toggleTheme = () => {
+      3   setTheme(currentTheme => currentTheme === 'dark' ? 'light' : 'dark')
+      4 }
+      5
+      6 // Стало
+      7 const toggleTheme = () => {
+      8   document.documentElement.style.animation = 'themeFade 0.4s ease'
+      9   setTheme(currentTheme => currentTheme === 'dark' ? 'light' : 'dark')
+     10   setTimeout(() => {
+     11     document.documentElement.style.animation = ''
+     12   }, 400)
+     13 }
+
+    ---
+
+    4. frontend/src/pages/AdminPage.jsx
+
+    Surface card:
+
+     1 background: 'var(--surface-card-bg)',
+     2 border: '1px solid var(--ttk-border)',
+     3 boxShadow: 'var(--shadow-sm)'
+
+    Filters:
+
+     1 background: 'var(--filter-bg)',
+     2 border: '1px solid var(--ttk-border)'
+
+    Table header:
+
+     1 background: 'var(--table-head-bg)',
+
+    Table row:
+
+     1 background: user.is_deleted ? 'var(--table-row-hover)' : 'transparent',
+
+    Status badges:
+
+     1 background: 'var(--filter-bg)',
+     2 color: user.is_deleted ? 'var(--ttk-red)' : 'var(--ttk-success)'
+
+    Block button:
+
+     1 background: user.is_deleted ? 'var(--ttk-success)' : 'var(--ttk-warning)',
+     2 color: user.is_deleted ? 'white' : 'var(--ttk-black)',
+
+    Checkbox label:
+
+     1 background: formData.role_ids?.includes(role.id)
+     2   ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.12), rgba(229, 39, 19, 0.05))'
+     3   : 'var(--plain-surface)',
+     4 border: formData.role_ids?.includes(role.id)
+     5   ? '1px solid var(--ttk-border-strong)'
+     6   : '1px solid var(--ttk-border)',
+
+    Modal info box:
+
+     1 background: 'var(--filter-bg)',
+     2 border: '1px solid var(--ttk-border)',
+
+    ---
+
+    5. frontend/src/pages/PlayerPage.jsx
+
+    Card header:
+
+     1 background: 'var(--surface-panel-header)',
+     2 borderBottom: '2px solid var(--ttk-border-strong)',
+
+    Live indicator:
+
+     1 background: 'var(--filter-bg)',
+     2 border: '1px solid var(--ttk-border-strong)',
+
+    Track info:
+
+     1 background: 'var(--filter-bg)',
+     2 borderTop: '1px solid var(--ttk-border)',
+     3 color: 'var(--page-text)',
+
+    No broadcast:
+
+     1 color: 'var(--ttk-gray-light)',
+
+    Messages section:
+
+     1 borderTop: '2px solid var(--ttk-border)',
+     2 color: 'var(--page-text)',
+     3 background: 'var(--surface-card-bg)',
+     4 border: '1px solid var(--ttk-border)',

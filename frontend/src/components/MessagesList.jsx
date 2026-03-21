@@ -1,4 +1,10 @@
+import { getLocale, useLanguage } from '../hooks/useLanguage'
+
 function MessagesList({ messages, onStatusChange, showArchive = false }) {
+  const language = useLanguage(state => state.language)
+  const t = useLanguage(state => state.t)
+  const locale = getLocale(language)
+
   const getStatusClass = (status) => {
     switch (status) {
       case 'new': return 'status-new'
@@ -10,15 +16,15 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'new': return 'Новое'
-      case 'in_progress': return 'В работе'
-      case 'completed': return 'Завершено'
+      case 'new': return t('messageStatus.new')
+      case 'in_progress': return t('messageStatus.inProgress')
+      case 'completed': return t('messageStatus.completed')
       default: return status
     }
   }
 
   if (!messages || messages.length === 0) {
-    return <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Нет сообщений</p>
+    return <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>{t('player.noMessages')}</p>
   }
 
   return (
@@ -38,7 +44,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
               {getStatusText(msg.status)}
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {new Date(msg.created_at).toLocaleString('ru-RU')}
+              {new Date(msg.created_at).toLocaleString(locale)}
             </span>
           </div>
           <p style={{ marginBottom: '0.75rem' }}>{msg.text}</p>
@@ -49,7 +55,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
                   className="btn btn-primary btn-sm"
                   onClick={() => onStatusChange(msg.id, 'in_progress')}
                 >
-                  В работу
+                  {t('messageStatus.takeInProgress')}
                 </button>
               )}
               {msg.status === 'in_progress' && (
@@ -57,7 +63,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
                   className="btn btn-success btn-sm"
                   onClick={() => onStatusChange(msg.id, 'completed')}
                 >
-                  Завершить
+                  {t('messageStatus.finish')}
                 </button>
               )}
             </div>

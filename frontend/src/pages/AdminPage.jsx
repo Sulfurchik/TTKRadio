@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { adminService } from '../services'
+import { getLocale, useLanguage } from '../hooks/useLanguage'
 import Modal from '../components/Modal'
 import StatusBanner from '../components/StatusBanner'
 
 
-const ROLE_DESCRIPTIONS = {
-  Пользователь: 'Доступ к эфиру и отправке сообщений.',
-  Ведущий: 'Управление медиатекой, плейлистами и эфиром.',
-  Администратор: 'Администрирование пользователей и прав доступа.',
+const ROLE_KEY_BY_NAME = {
+  Пользователь: 'user',
+  Ведущий: 'host',
+  Администратор: 'admin',
 }
 
 
@@ -35,6 +36,9 @@ function ActionIconButton({ title, onClick, children }) {
 
 
 function AdminPage() {
+  const language = useLanguage(state => state.language)
+  const t = useLanguage(state => state.t)
+  const locale = getLocale(language)
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
   const [filters, setFilters] = useState({})
@@ -49,6 +53,16 @@ function AdminPage() {
     loadUsers()
     loadRoles()
   }, [])
+
+  const getRoleKey = (roleName) => ROLE_KEY_BY_NAME[roleName]
+  const getRoleLabel = (roleName) => {
+    const roleKey = getRoleKey(roleName)
+    return roleKey ? t(`roles.${roleKey}`) : roleName
+  }
+  const getRoleDescription = (roleName) => {
+    const roleKey = getRoleKey(roleName)
+    return roleKey ? t(`roles.${roleKey}Description`) : t('admin.noRoleDescription')
+  }
 
   const loadUsers = async (activeFilters = filters) => {
     try {
@@ -101,13 +115,13 @@ function AdminPage() {
   }
 
   const handleDelete = async (userId) => {
-    if (!confirm('Удалить пользователя?')) return
+    if (!confirm(t('admin.deleteConfirm'))) return
     try {
       await adminService.deleteUser(userId)
       await loadUsers()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: error.response?.data?.detail || 'Не удалось удалить пользователя.' })
+      setNotice({ type: 'error', text: error.response?.data?.detail || t('admin.deleteUserError') })
     }
   }
 
@@ -117,7 +131,7 @@ function AdminPage() {
       await loadUsers()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: 'Не удалось изменить статус пользователя.' })
+      setNotice({ type: 'error', text: t('admin.changeStatusError') })
     }
   }
 
@@ -135,7 +149,7 @@ function AdminPage() {
       await loadUsers()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: error.response?.data?.detail || 'Не удалось сохранить изменения.' })
+      setNotice({ type: 'error', text: error.response?.data?.detail || t('admin.saveError') })
     } finally {
       setLoading(false)
     }
@@ -177,21 +191,21 @@ function AdminPage() {
     })
   }
 
-  const getUserStateLabel = (user) => (user.is_deleted ? 'Заблокирован' : 'Активен')
+  const getUserStateLabel = (user) => (user.is_deleted ? t('admin.blocked') : t('admin.active'))
 
   const renderUserActions = (user) => (
     <div className="table-actions" style={{ flexWrap: 'wrap', gap: '0.375rem' }}>
-      <ActionIconButton title="Редактировать профиль" onClick={() => openEditModal(user)}>
+      <ActionIconButton title={t('admin.edit')} onClick={() => openEditModal(user)}>
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.586 3.586a2 2 0 112.828 2.828L11.5 14.328 8 15l.672-3.5 7.914-7.914z" />
         </svg>
       </ActionIconButton>
-      <ActionIconButton title="Сменить пароль" onClick={() => openPasswordModal(user)}>
+      <ActionIconButton title={t('admin.changePassword')} onClick={() => openPasswordModal(user)}>
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a5 5 0 00-9.584 2H4a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-1m4-10l-3 3m0 0l-3-3m3 3V4" />
         </svg>
       </ActionIconButton>
-      <ActionIconButton title="Назначить роли" onClick={() => openRolesModal(user)}>
+      <ActionIconButton title={t('admin.assignRoles')} onClick={() => openRolesModal(user)}>
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h8a2 2 0 012 2v2h2a2 2 0 012 2v8a2 2 0 01-2 2h-6l-3 2v-2H6a2 2 0 01-2-2V6zm4 3h4m-4 4h4m5 1l1.5 1.5L18 12" />
         </svg>
@@ -200,24 +214,24 @@ function AdminPage() {
         type="button"
         className="btn btn-sm"
         onClick={() => handleBlock(user.id, !user.is_deleted)}
-        title={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
-        aria-label={user.is_deleted ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}
+        title={user.is_deleted ? t('admin.unblock') : t('admin.block')}
+        aria-label={user.is_deleted ? t('admin.unblock') : t('admin.block')}
         style={{
           background: user.is_deleted
             ? 'linear-gradient(135deg, #28a745, #34d058)'
             : 'linear-gradient(135deg, #ffc107, #ffdb73)',
-          color: user.is_deleted ? 'white' : '#333',
+          color: user.is_deleted ? 'white' : 'var(--page-text)',
           border: 'none'
         }}
       >
-        {user.is_deleted ? 'Разблокировать' : 'Блок'}
+        {user.is_deleted ? t('admin.unblock') : t('admin.block')}
       </button>
       <button
         type="button"
         className="btn btn-danger btn-sm"
         onClick={() => handleDelete(user.id)}
-        title="Удалить пользователя"
-        aria-label="Удалить пользователя"
+        title={t('admin.deleteUser')}
+        aria-label={t('admin.deleteUser')}
         style={{
           width: '36px',
           height: '36px',
@@ -238,14 +252,14 @@ function AdminPage() {
     <div className="container page-shell">
       <section className="page-hero page-hero--admin">
         <div className="page-hero__content">
-          <span className="page-hero__eyebrow">Администрирование</span>
-          <h1 className="page-hero__title">Администрирование</h1>
+          <span className="page-hero__eyebrow">{t('navbar.admin')}</span>
+          <h1 className="page-hero__title">{t('admin.title')}</h1>
           <p className="page-hero__description">
-            Управление пользователями, ролями и доступом.
+            {t('admin.description')}
           </p>
           <div className="page-hero__chips">
-            <span className="hero-chip">Пользователей: {users.length}</span>
-            <span className="hero-chip">Ролей: {roles.length}</span>
+            <span className="hero-chip">{t('admin.usersCount')}: {users.length}</span>
+            <span className="hero-chip">{t('admin.rolesCount')}: {roles.length}</span>
           </div>
         </div>
       </section>
@@ -253,62 +267,62 @@ function AdminPage() {
       <StatusBanner notice={notice} onDismiss={() => setNotice(null)} />
 
       <div className="surface-card" style={{
-        background: 'rgba(255, 255, 255, 0.9)',
+        background: 'var(--surface-card-bg)',
         backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(229, 39, 19, 0.1)',
-        boxShadow: '0 8px 32px rgba(229, 39, 19, 0.08)'
+        border: '1px solid var(--ttk-border)',
+        boxShadow: 'var(--shadow-sm)'
       }}>
         <div className="card-header">
-          <h2 className="card-title">Пользователи</h2>
+          <h2 className="card-title">{t('admin.users')}</h2>
         </div>
 
         {/* Фильтры */}
         <div className="filters" style={{
-          background: 'linear-gradient(135deg, rgba(229, 39, 19, 0.05), rgba(229, 39, 19, 0.02))',
+          background: 'var(--filter-bg)',
           borderRadius: 'var(--radius-lg)',
           padding: '1.25rem',
           marginBottom: '1.5rem',
-          border: '1px solid rgba(229, 39, 19, 0.1)'
+          border: '1px solid var(--ttk-border)'
         }}>
           <div>
-            <label className="form-label">Логин</label>
+            <label className="form-label">{t('admin.login')}</label>
             <input
               type="text"
               className="form-input"
               value={filters.login || ''}
               onChange={e => handleFilterChange('login', e.target.value)}
-              placeholder="Поиск"
+              placeholder={t('admin.search')}
             />
           </div>
           <div>
-            <label className="form-label">ФИО</label>
+            <label className="form-label">{t('admin.fio')}</label>
             <input
               type="text"
               className="form-input"
               value={filters.fio || ''}
               onChange={e => handleFilterChange('fio', e.target.value)}
-              placeholder="Поиск"
+              placeholder={t('admin.search')}
             />
           </div>
           <div>
-            <label className="form-label">Роль</label>
+            <label className="form-label">{t('admin.role')}</label>
             <select
               className="form-input"
               value={filters.role_id || ''}
               onChange={e => handleFilterChange('role_id', e.target.value)}
             >
-              <option value="">Все роли</option>
+              <option value="">{t('admin.allRoles')}</option>
               {roles.map(role => (
-                <option key={role.id} value={role.id}>{role.name}</option>
+                <option key={role.id} value={role.id}>{getRoleLabel(role.name)}</option>
               ))}
             </select>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
             <button className="btn btn-primary" onClick={applyFilters}>
-              Применить
+              {t('admin.apply')}
             </button>
             <button className="btn btn-outline" onClick={clearFilters}>
-              Сброс
+              {t('admin.reset')}
             </button>
           </div>
         </div>
@@ -325,12 +339,12 @@ function AdminPage() {
               borderBottom: '2px solid var(--ttk-red)'
             }}>
               <tr>
-                <th>Логин</th>
-                <th>ФИО</th>
-                <th>Роли</th>
-                <th>Дата регистрации</th>
-                <th>Статус</th>
-                <th>Действия</th>
+                <th>{t('admin.login')}</th>
+                <th>{t('admin.fio')}</th>
+                <th>{t('admin.roles')}</th>
+                <th>{t('admin.registrationDate')}</th>
+                <th>{t('admin.status')}</th>
+                <th>{t('admin.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -342,23 +356,23 @@ function AdminPage() {
                   <td style={{ fontWeight: 600 }}>{user.login}</td>
                   <td>{user.fio}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                      {user.roles.map(role => (
-                        <span key={role.id} className="status-badge status-new">{role.name}</span>
-                      ))}
-                    </div>
-                  </td>
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        {user.roles.map(role => (
+                          <span key={role.id} className="status-badge status-new">{getRoleLabel(role.name)}</span>
+                        ))}
+                      </div>
+                    </td>
                   <td style={{ fontSize: '0.85rem', color: 'var(--ttk-gray-light)' }}>
-                    {new Date(user.created_at).toLocaleDateString('ru-RU')}
+                    {new Date(user.created_at).toLocaleDateString(locale)}
                   </td>
                   <td>
                     {user.is_deleted ? (
                       <span className="status-badge status-completed" style={{ background: '#ffebee', color: '#c62828' }}>
-                        Заблокирован
+                        {t('admin.blocked')}
                       </span>
                     ) : (
                       <span className="status-badge status-new" style={{ background: '#e8f5e9', color: '#2e7d32' }}>
-                        Активен
+                        {t('admin.active')}
                       </span>
                     )}
                   </td>
@@ -371,7 +385,7 @@ function AdminPage() {
           </table>
           {users.length === 0 && (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--ttk-gray-light)' }}>
-              <p>Пользователи не найдены</p>
+              <p>{t('admin.noUsers')}</p>
             </div>
           )}
         </div>
@@ -392,19 +406,19 @@ function AdminPage() {
 
                 <div className="admin-user-card__meta">
                   <div>
-                    <span className="admin-user-card__label">Роли</span>
+                    <span className="admin-user-card__label">{t('admin.roles')}</span>
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
                       {user.roles.map(role => (
                         <span key={`mobile-role-${user.id}-${role.id}`} className="status-badge status-new">
-                          {role.name}
+                          {getRoleLabel(role.name)}
                         </span>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <span className="admin-user-card__label">Дата регистрации</span>
+                    <span className="admin-user-card__label">{t('admin.registrationDate')}</span>
                     <div className="admin-user-card__value">
-                      {new Date(user.created_at).toLocaleDateString('ru-RU')}
+                      {new Date(user.created_at).toLocaleDateString(locale)}
                     </div>
                   </div>
                 </div>
@@ -416,7 +430,7 @@ function AdminPage() {
             ))
           ) : (
             <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--ttk-gray-light)' }}>
-              Пользователи не найдены
+              {t('admin.noUsers')}
             </div>
           )}
         </div>
@@ -426,20 +440,20 @@ function AdminPage() {
       <Modal
         isOpen={isModalOpen && modalType === 'edit'}
         onClose={() => setIsModalOpen(false)}
-        title="Редактирование пользователя"
+        title={t('admin.editUser')}
         actions={
           <>
             <button className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
-              Отмена
+              {t('admin.cancel')}
             </button>
             <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Сохранение...' : 'Сохранить'}
+              {loading ? t('common.saveInProgress') : t('admin.save')}
             </button>
           </>
         }
       >
         <div className="form-group">
-          <label className="form-label">Логин</label>
+          <label className="form-label">{t('admin.login')}</label>
           <input
             type="text"
             className="form-input"
@@ -448,7 +462,7 @@ function AdminPage() {
           />
         </div>
         <div className="form-group">
-          <label className="form-label">ФИО</label>
+          <label className="form-label">{t('admin.fio')}</label>
           <input
             type="text"
             className="form-input"
@@ -462,20 +476,20 @@ function AdminPage() {
       <Modal
         isOpen={isModalOpen && modalType === 'password'}
         onClose={() => setIsModalOpen(false)}
-        title="Смена пароля"
+        title={t('admin.passwordModalTitle')}
         actions={
           <>
             <button className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
-              Отмена
+              {t('admin.cancel')}
             </button>
             <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Сохранение...' : 'Сохранить'}
+              {loading ? t('common.saveInProgress') : t('admin.save')}
             </button>
           </>
         }
       >
         <div className="form-group">
-          <label className="form-label">Новый пароль</label>
+          <label className="form-label">{t('admin.newPassword')}</label>
           <input
             type="password"
             className="form-input"
@@ -484,7 +498,7 @@ function AdminPage() {
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Подтверждение пароля</label>
+          <label className="form-label">{t('auth.confirmPassword')}</label>
           <input
             type="password"
             className="form-input"
@@ -498,14 +512,14 @@ function AdminPage() {
       <Modal
         isOpen={isModalOpen && modalType === 'roles'}
         onClose={() => setIsModalOpen(false)}
-        title="Назначение ролей"
+        title={t('admin.rolesModalTitle')}
         actions={
           <>
             <button className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
-              Отмена
+              {t('admin.cancel')}
             </button>
             <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Сохранение...' : 'Сохранить'}
+              {loading ? t('common.saveInProgress') : t('admin.save')}
             </button>
           </>
         }
@@ -520,7 +534,7 @@ function AdminPage() {
           fontSize: '0.9rem',
           lineHeight: 1.5,
         }}>
-          Пользователь не совмещается с ведущим и администратором. Администратор может дополнительно быть ведущим.
+          {t('admin.roleRule')}
         </div>
 
         <div className="checkbox-group">
@@ -530,7 +544,7 @@ function AdminPage() {
               type="button"
               className="checkbox-label"
               onClick={() => handleRoleCheckbox(role.id)}
-              title={ROLE_DESCRIPTIONS[role.name] || role.name}
+              title={getRoleDescription(role.name)}
               aria-pressed={formData.role_ids?.includes(role.id)}
               style={{
                 width: '100%',
@@ -543,15 +557,15 @@ function AdminPage() {
                   : '1px solid rgba(0, 0, 0, 0.08)',
                 justifyContent: 'space-between',
               }}
-            >
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.2rem', color: 'var(--ttk-black)' }}>
-                  {role.name}
+              >
+                <div>
+                <div style={{ fontWeight: 700, marginBottom: '0.2rem', color: 'var(--page-text)' }}>
+                  {getRoleLabel(role.name)}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--ttk-gray-light)', lineHeight: 1.45 }}>
+                  {getRoleDescription(role.name)}
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--ttk-gray-light)', lineHeight: 1.45 }}>
-                  {ROLE_DESCRIPTIONS[role.name] || 'Роль без описания'}
-                </div>
-              </div>
               <div style={{
                 minWidth: '88px',
                 textAlign: 'right',
@@ -559,7 +573,7 @@ function AdminPage() {
                 fontWeight: 700,
                 color: formData.role_ids?.includes(role.id) ? 'var(--ttk-red)' : 'var(--ttk-gray-light)',
               }}>
-                {formData.role_ids?.includes(role.id) ? 'Выбрано' : 'Назначить'}
+                {formData.role_ids?.includes(role.id) ? t('admin.selected') : t('admin.assign')}
               </div>
             </button>
           ))}

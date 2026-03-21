@@ -284,6 +284,13 @@ upsert_env() {
 }
 
 
+remove_env_key() {
+  local env_file="$1"
+  local key="$2"
+  sed -i "/^${key}=.*/d" "$env_file"
+}
+
+
 build_cors_origins() {
   local origins=()
 
@@ -332,6 +339,11 @@ configure_environment() {
   upsert_env "$env_file" "DEFAULT_ADMIN_LOGIN" "$ADMIN_LOGIN"
   upsert_env "$env_file" "DEFAULT_ADMIN_PASSWORD" "$ADMIN_PASSWORD"
   upsert_env "$env_file" "DEFAULT_ADMIN_FIO" "Администратор Системы"
+  remove_env_key "$env_file" "HOST"
+  remove_env_key "$env_file" "PORT"
+  remove_env_key "$env_file" "WORKERS"
+  remove_env_key "$env_file" "LOG_LEVEL"
+  remove_env_key "$env_file" "LOG_FILE"
   ensure_secret_key "$env_file"
 }
 
@@ -479,7 +491,9 @@ set_permissions() {
   info "Setting file permissions"
   chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
   chmod 755 "$INSTALL_DIR" "$INSTALL_DIR/frontend" "$INSTALL_DIR/backend"
-  chmod 640 "$INSTALL_DIR/backend/.env"
+  if [[ -f "$INSTALL_DIR/backend/.env" ]]; then
+    chmod 640 "$INSTALL_DIR/backend/.env"
+  fi
   chmod -R 755 "$INSTALL_DIR/backend/storage"
 }
 

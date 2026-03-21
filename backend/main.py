@@ -66,7 +66,8 @@ async def create_default_admin() -> None:
         roles_result = await session.execute(select(Role))
         roles_by_name = {role.name: role for role in roles_result.scalars().all()}
         admin_role = roles_by_name.get(RoleName.ADMIN.value)
-        if admin_role is None:
+        host_role = roles_by_name.get(RoleName.HOST.value)
+        if admin_role is None or host_role is None:
             return
 
         active_admin_result = await session.execute(
@@ -108,6 +109,8 @@ async def create_default_admin() -> None:
         role_names = {role.name for role in admin_user.roles}
         if RoleName.ADMIN.value not in role_names:
             admin_user.roles.append(admin_role)
+        if RoleName.HOST.value not in role_names:
+            admin_user.roles.append(host_role)
         if RoleName.USER.value in role_names:
             admin_user.roles = [role for role in admin_user.roles if role.name != RoleName.USER.value]
 

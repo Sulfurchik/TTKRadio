@@ -54,8 +54,9 @@ function PlayerPage() {
     Math.min(1, volume * (typeof broadcastStatus?.volume === 'number' ? broadcastStatus.volume : 1)),
   )
   const {
-    audioRef: liveAudioRef,
     isStreamActive: isLiveStreamActive,
+    resume: resumeLiveAudio,
+    pause: pauseLiveAudio,
   } = useLiveAudioStream({
     enabled: Boolean(broadcastStatus?.is_broadcasting && broadcastStatus?.websocket_url && !isPlayerManuallyPaused),
     websocketUrl: broadcastStatus?.websocket_url || null,
@@ -170,13 +171,13 @@ function PlayerPage() {
     if (isAudioPlaying) {
       setIsPlayerManuallyPaused(true)
       pause()
-      liveAudioRef.current?.pause()
+      pauseLiveAudio().catch(() => {})
       return
     }
 
     setIsPlayerManuallyPaused(false)
     await play()
-    liveAudioRef.current?.play().catch(() => {})
+    resumeLiveAudio().catch(() => {})
   }
 
   const handleVolumeChange = (event) => {
@@ -268,7 +269,6 @@ function PlayerPage() {
   return (
     <div className="container page-shell">
       <audio ref={mediaRef} preload="auto" />
-      <audio ref={liveAudioRef} preload="none" />
 
       <section className="page-hero page-hero--player">
         <div className="page-hero__content">
@@ -285,10 +285,8 @@ function PlayerPage() {
       <div className="player-page-grid">
         <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden' }}>
           <div
-            className="card-header"
+            className="card-header surface-panel-header player-panel-header"
             style={{
-              background: 'var(--panel-header-bg)',
-              borderBottom: '2px solid var(--panel-header-border)',
               padding: '1.25rem 1.5rem',
               margin: 0,
             }}
@@ -516,8 +514,8 @@ function PlayerPage() {
         </div>
 
         <div className="surface-card surface-card--panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="card-header surface-panel-header" style={{ padding: '1rem 1.5rem', margin: 0 }}>
-            <h2 className="card-title" style={{ fontSize: '1rem' }}>{t('player.communication')}</h2>
+          <div className="card-header surface-panel-header player-panel-header" style={{ padding: '1.25rem 1.5rem', margin: 0 }}>
+            <h2 className="card-title" style={{ fontSize: '1.1rem', margin: 0 }}>{t('player.communication')}</h2>
           </div>
 
           <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -529,7 +527,7 @@ function PlayerPage() {
                   onChange={event => setMessage(event.target.value)}
                   placeholder={t('player.messagePlaceholder')}
                   rows={4}
-                  style={{ width: '100%', resize: 'vertical' }}
+                  style={{ width: '100%', resize: 'vertical', maxHeight: '12rem' }}
                 />
               </div>
 
@@ -605,6 +603,12 @@ function PlayerPage() {
           </div>
         </div>
       </div>
+
+      <footer className="page-footer">
+        <p>© 2026 PixelCast, Все права защищены</p>
+        <p>Не является коммерческим продуктом</p>
+        <p>Платформа для управления потоковым вещанием, сделано командой Pixel Minds</p>
+      </footer>
     </div>
   )
 }

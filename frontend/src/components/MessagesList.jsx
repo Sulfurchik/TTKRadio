@@ -34,7 +34,8 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
           key={msg.id} 
           style={{
             padding: '1rem',
-            background: 'var(--bg-color)',
+            background: 'var(--player-message-card-bg)',
+            border: '1px solid var(--player-message-card-border)',
             borderRadius: '0.5rem',
             borderLeft: msg.status === 'new' ? '4px solid var(--primary-color)' : '4px solid transparent'
           }}
@@ -47,7 +48,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
               {new Date(msg.created_at).toLocaleString(locale)}
             </span>
           </div>
-          <p style={{ marginBottom: '0.75rem' }}>{msg.text}</p>
+          <p style={{ marginBottom: '0.75rem', color: 'var(--page-text)' }}>{msg.text}</p>
           {!showArchive && msg.status !== 'completed' && (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {msg.status === 'new' && (

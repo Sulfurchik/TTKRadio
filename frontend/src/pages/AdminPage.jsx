@@ -54,6 +54,7 @@ function AdminPage() {
     loadRoles()
   }, [])
 
+  const platformUsersCount = users.filter(user => user.roles.some(role => role.name === 'Пользователь')).length
   const adminUsersCount = users.filter(user => user.roles.some(role => role.name === 'Администратор')).length
   const hostUsersCount = users.filter(user => user.roles.some(role => role.name === 'Ведущий')).length
 
@@ -261,7 +262,7 @@ function AdminPage() {
             {t('admin.description')}
           </p>
           <div className="page-hero__chips">
-            <span className="hero-chip">{t('admin.usersCount')}: {users.length}</span>
+            <span className="hero-chip">{t('admin.usersCount')}: {platformUsersCount}</span>
             <span className="hero-chip">{t('admin.adminsCount')}: {adminUsersCount}</span>
             <span className="hero-chip">{t('admin.hostsCount')}: {hostUsersCount}</span>
           </div>

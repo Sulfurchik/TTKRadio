@@ -8,7 +8,7 @@ import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useAuthStore } from '../store/authStore'
 import { hostService } from '../services'
 import { formatPlaybackTime } from '../utils/broadcastSync'
-import { buildWebSocketUrl, createStreamingAudioRecorder } from '../utils/liveStream'
+import { buildWebSocketUrl, float32ToInt16Buffer, getAudioContextClass } from '../utils/liveStream'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
 
@@ -38,10 +38,13 @@ function HostPage() {
   const mediaRecorderRef = useRef(null)
   const mediaStreamRef = useRef(null)
   const audioChunksRef = useRef([])
-  const liveMicRecorderRef = useRef(null)
   const liveMicStreamRef = useRef(null)
   const liveMicSocketRef = useRef(null)
   const liveMicStoppingRef = useRef(false)
+  const liveMicAudioContextRef = useRef(null)
+  const liveMicSourceNodeRef = useRef(null)
+  const liveMicProcessorRef = useRef(null)
+  const liveMicSilentGainRef = useRef(null)
 
   const {
     audioRef,
@@ -113,9 +116,12 @@ function HostPage() {
     return () => {
       stopMediaStream(mediaStreamRef.current)
       liveMicStoppingRef.current = true
-      liveMicRecorderRef.current?.stop?.()
       liveMicSocketRef.current?.close?.()
       stopMediaStream(liveMicStreamRef.current)
+      liveMicProcessorRef.current?.disconnect?.()
+      liveMicSourceNodeRef.current?.disconnect?.()
+      liveMicSilentGainRef.current?.disconnect?.()
+      liveMicAudioContextRef.current?.close?.()
     }
   }, [])
 
@@ -394,11 +400,20 @@ function HostPage() {
   }
 
   const teardownLiveMicTransport = () => {
-    liveMicRecorderRef.current = null
     if (liveMicSocketRef.current && liveMicSocketRef.current.readyState <= WebSocket.OPEN) {
       liveMicSocketRef.current.close()
     }
     liveMicSocketRef.current = null
+    liveMicProcessorRef.current?.disconnect?.()
+    liveMicProcessorRef.current = null
+    liveMicSourceNodeRef.current?.disconnect?.()
+    liveMicSourceNodeRef.current = null
+    liveMicSilentGainRef.current?.disconnect?.()
+    liveMicSilentGainRef.current = null
+    if (liveMicAudioContextRef.current) {
+      liveMicAudioContextRef.current.close().catch(() => {})
+      liveMicAudioContextRef.current = null
+    }
     stopMediaStream(liveMicStreamRef.current)
     liveMicStreamRef.current = null
   }
@@ -412,10 +427,6 @@ function HostPage() {
       }
     } catch (error) {
       console.debug('Не удалось отправить событие остановки live-микрофона', error)
-    }
-
-    if (liveMicRecorderRef.current?.state && liveMicRecorderRef.current.state !== 'inactive') {
-      liveMicRecorderRef.current.stop()
     }
 
     teardownLiveMicTransport()
@@ -468,8 +479,21 @@ function HostPage() {
       })
       liveMicStreamRef.current = stream
 
-      const { recorder } = createStreamingAudioRecorder(stream)
-      liveMicRecorderRef.current = recorder
+      const AudioContextClass = getAudioContextClass()
+      if (!AudioContextClass) {
+        throw new Error('AudioContext is not supported')
+      }
+
+      const audioContext = new AudioContextClass()
+      liveMicAudioContextRef.current = audioContext
+      const sourceNode = audioContext.createMediaStreamSource(stream)
+      const processorNode = audioContext.createScriptProcessor(2048, 1, 1)
+      const silentGainNode = audioContext.createGain()
+      silentGainNode.gain.value = 0
+
+      liveMicSourceNodeRef.current = sourceNode
+      liveMicProcessorRef.current = processorNode
+      liveMicSilentGainRef.current = silentGainNode
 
       const socket = new WebSocket(
         buildWebSocketUrl(`/api/stream/ws/host/${user.id}?token=${encodeURIComponent(token)}`),
@@ -477,25 +501,28 @@ function HostPage() {
       socket.binaryType = 'arraybuffer'
       liveMicSocketRef.current = socket
 
-      recorder.ondataavailable = async (event) => {
-        if (!event.data?.size || socket.readyState !== WebSocket.OPEN) {
-          return
-        }
-
-        const chunk = await event.data.arrayBuffer()
-        socket.send(chunk)
-      }
-
-      recorder.onstop = () => {
-        stopMediaStream(liveMicStreamRef.current)
-        liveMicStreamRef.current = null
-      }
-
       socket.onopen = async () => {
         try {
           await hostService.startLiveAudioBroadcast()
-          socket.send(JSON.stringify({ type: 'live_audio_start' }))
-          recorder.start(900)
+          socket.send(JSON.stringify({
+            type: 'live_audio_start',
+            sampleRate: audioContext.sampleRate,
+            channels: 1,
+          }))
+
+          processorNode.onaudioprocess = (event) => {
+            if (socket.readyState !== WebSocket.OPEN) {
+              return
+            }
+
+            const channelData = event.inputBuffer.getChannelData(0)
+            socket.send(float32ToInt16Buffer(channelData))
+          }
+
+          sourceNode.connect(processorNode)
+          processorNode.connect(silentGainNode)
+          silentGainNode.connect(audioContext.destination)
+          await audioContext.resume()
           setIsLiveMicActive(true)
           setIsLiveMicConnecting(false)
           await refreshStatus()

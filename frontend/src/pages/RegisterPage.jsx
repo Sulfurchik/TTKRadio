@@ -7,6 +7,7 @@ import loginLogo from '../assets/login-logo.svg'
 
 function RegisterPage() {
   const navigate = useNavigate()
+  useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
   const { register } = useAuthStore()
   const [formData, setFormData] = useState({

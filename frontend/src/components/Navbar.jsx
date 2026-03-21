@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import LanguageSwitch from './LanguageSwitch'
 import ThemeToggle from './ThemeToggle'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
@@ -15,8 +16,7 @@ function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
-  const language = useLanguage(state => state.language)
-  const setLanguage = useLanguage(state => state.setLanguage)
+  useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
 
   const hasRole = (roles) => {
@@ -79,22 +79,7 @@ function Navbar() {
 
         <div className="navbar-actions">
           <div className="navbar-controls">
-            <div className="language-switch" role="group" aria-label={t('navbar.switchLanguage')}>
-              <button
-                type="button"
-                className={`btn btn-outline btn-sm language-switch__button ${language === 'ru' ? 'language-switch__button--active' : ''}`}
-                onClick={() => setLanguage('ru')}
-              >
-                RU
-              </button>
-              <button
-                type="button"
-                className={`btn btn-outline btn-sm language-switch__button ${language === 'en' ? 'language-switch__button--active' : ''}`}
-                onClick={() => setLanguage('en')}
-              >
-                EN
-              </button>
-            </div>
+            <LanguageSwitch />
             <ThemeToggle />
             <button
               type="button"

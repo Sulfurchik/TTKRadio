@@ -499,11 +499,13 @@ select {
 .language-switch {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
   padding: 0.2rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.56);
   border: 1px solid rgba(229, 39, 19, 0.12);
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(76, 44, 37, 0.05);
+  transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
 
 .language-switch__button {
@@ -512,12 +514,46 @@ select {
   padding-inline: 0.85rem;
   border-radius: 999px;
   box-shadow: none;
+  transition:
+    max-width 0.24s ease,
+    min-width 0.24s ease,
+    margin 0.24s ease,
+    padding 0.24s ease,
+    opacity 0.2s ease,
+    transform 0.24s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.language-switch__button--secondary {
+  max-width: 0;
+  min-width: 0;
+  margin-right: 0;
+  padding-inline: 0;
+  opacity: 0;
+  border-width: 0;
+  pointer-events: none;
+  transform: translateX(0.4rem);
 }
 
 .language-switch__button--active {
   color: var(--ttk-white);
   background: linear-gradient(135deg, var(--ttk-red), var(--ttk-red-light));
   border-color: transparent;
+}
+
+.language-switch:hover .language-switch__button--secondary,
+.language-switch:focus-within .language-switch__button--secondary,
+.language-switch--expanded .language-switch__button--secondary {
+  max-width: 3.3rem;
+  min-width: 3.1rem;
+  margin-right: 0.3rem;
+  padding-inline: 0.85rem;
+  opacity: 1;
+  border-width: 1px;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .navbar-language,
@@ -647,6 +683,11 @@ select {
   border-bottom: 1px solid var(--panel-header-border);
 }
 
+.player-panel-header {
+  min-height: 5rem;
+  align-items: center;
+}
+
 .card-title {
   font-family: 'PT Sans Caption', sans-serif;
   font-size: 1.15rem;
@@ -761,6 +802,7 @@ select {
 .messages-input {
   min-height: 7.8rem;
   resize: vertical;
+  max-height: 12rem;
 }
 
 .form-input:hover,
@@ -873,6 +915,21 @@ select {
   background: var(--badge-warn-bg);
   color: var(--badge-warn-text);
   border-color: rgba(255, 178, 90, 0.24);
+}
+
+.page-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1.75rem;
+  padding: 1.15rem 1.35rem 1.5rem;
+  border-radius: 22px;
+  border: 1px solid var(--ttk-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 248, 245, 0.7));
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
 }
 
 .status-new {
@@ -1742,6 +1799,11 @@ html[data-theme='dark'] .monitor-summary__title {
   color: var(--ttk-gray-100);
 }
 
+html[data-theme='dark'] .page-shell,
+html[data-theme='dark'] .page-shell *:not(.btn):not(.btn *):not(.status-badge):not(.status-badge *):not(svg):not(path) {
+  color: var(--page-text);
+}
+
 html[data-theme='dark'] .page-hero__description,
 html[data-theme='dark'] .nav-link,
 html[data-theme='dark'] .hero-chip,
@@ -1778,6 +1840,12 @@ html[data-theme='dark'] .modal {
 html[data-theme='dark'] .surface-panel-header {
   background: linear-gradient(135deg, rgba(229, 39, 19, 0.14), rgba(255, 102, 87, 0.05));
   border-bottom: 1px solid rgba(255, 126, 109, 0.26);
+}
+
+html[data-theme='dark'] .page-footer {
+  background: linear-gradient(180deg, rgba(32, 24, 23, 0.88), rgba(19, 15, 14, 0.92));
+  border-color: rgba(255, 126, 109, 0.18);
+  color: #cdbfbc;
 }
 
 html[data-theme='dark'] .status-banner {
@@ -1899,6 +1967,10 @@ html[data-theme='dark'] .language-switch {
 html[data-theme='dark'] .language-switch__button {
   color: var(--page-text);
   background: transparent;
+}
+
+html[data-theme='dark'] .language-switch__button--secondary {
+  color: #cdbfbc;
 }
 
 html[data-theme='dark'] .language-switch__button--active {

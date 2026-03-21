@@ -1,9 +1,3 @@
-const LIVE_STREAM_MIME_CANDIDATES = [
-  'audio/webm;codecs=opus',
-  'audio/webm; codecs=opus',
-  'audio/webm',
-]
-
 export function buildWebSocketUrl(path) {
   if (typeof window === 'undefined') {
     return path
@@ -13,29 +7,33 @@ export function buildWebSocketUrl(path) {
   return new URL(path, `${protocol}//${window.location.host}`).toString()
 }
 
-export function getSupportedLiveStreamPlaybackMimeType() {
-  if (typeof window === 'undefined' || typeof MediaSource === 'undefined') {
+export function getAudioContextClass() {
+  if (typeof window === 'undefined') {
     return null
   }
 
-  return LIVE_STREAM_MIME_CANDIDATES.find(candidate => MediaSource.isTypeSupported(candidate)) || null
+  return window.AudioContext || window.webkitAudioContext || null
 }
 
-export function createStreamingAudioRecorder(stream) {
-  const supportedMimeType = LIVE_STREAM_MIME_CANDIDATES.find((candidate) => {
-    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
-      return false
-    }
+export function float32ToInt16Buffer(float32Array) {
+  const buffer = new ArrayBuffer(float32Array.length * 2)
+  const view = new DataView(buffer)
 
-    return MediaRecorder.isTypeSupported(candidate)
-  })
-
-  if (!supportedMimeType) {
-    throw new Error('Live microphone streaming is not supported in this browser')
+  for (let index = 0; index < float32Array.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, float32Array[index]))
+    view.setInt16(index * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
   }
 
-  return {
-    recorder: new MediaRecorder(stream, { mimeType: supportedMimeType }),
-    mimeType: supportedMimeType,
+  return buffer
+}
+
+export function int16BufferToFloat32Array(buffer) {
+  const view = new DataView(buffer)
+  const samples = new Float32Array(buffer.byteLength / 2)
+
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = view.getInt16(index * 2, true) / 0x7fff
   }
+
+  return samples
 }

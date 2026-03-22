@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { authService } from '../services'
+import { clearSession, getSessionToken, setSessionToken, setStoredUser } from '../utils/session'
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -10,8 +11,8 @@ export const useAuthStore = create((set) => ({
   login: async (login, password) => {
     const normalizedLogin = login.trim()
     const data = await authService.login(normalizedLogin, password)
-    localStorage.setItem('token', data.access_token)
-    localStorage.setItem('user', JSON.stringify(data.user))
+    setSessionToken(data.access_token)
+    setStoredUser(data.user)
     set({
       user: data.user,
       token: data.access_token,
@@ -43,7 +44,7 @@ export const useAuthStore = create((set) => ({
   },
 
   checkAuth: async () => {
-    const token = localStorage.getItem('token')
+    const token = getSessionToken()
 
     if (!token) {
       set({
@@ -59,7 +60,7 @@ export const useAuthStore = create((set) => ({
 
     try {
       const user = await authService.getMe()
-      localStorage.setItem('user', JSON.stringify(user))
+      setStoredUser(user)
       set({
         user,
         token,
@@ -67,8 +68,7 @@ export const useAuthStore = create((set) => ({
         isLoading: false,
       })
     } catch (error) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearSession()
       set({
         user: null,
         token: null,
@@ -79,14 +79,14 @@ export const useAuthStore = create((set) => ({
   },
 
   updateUser: (user) => {
-    localStorage.setItem('user', JSON.stringify(user))
+    setStoredUser(user)
     set({ user })
   },
 
   syncPresence: async () => {
     try {
       const user = await authService.updatePresence()
-      localStorage.setItem('user', JSON.stringify(user))
+      setStoredUser(user)
       set({ user })
     } catch (error) {
       void error

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { clearSession, getSessionToken } from '../utils/session'
 
 const api = axios.create({
   baseURL: '/api',
@@ -13,7 +14,7 @@ api.interceptors.request.use((config) => {
     delete config.headers?.['Content-Type']
     delete config.headers?.['content-type']
   }
-  const token = localStorage.getItem('token')
+  const token = getSessionToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -29,8 +30,7 @@ api.interceptors.response.use(
       requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register')
 
     if (error.response?.status === 401 && !isAuthRequest) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearSession()
       window.location.href = '/login'
     }
     return Promise.reject(error)

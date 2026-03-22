@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getStoredValue, setStoredValue } from '../utils/browserStorage'
 
 const STORAGE_KEY = 'language'
 
@@ -87,6 +88,7 @@ const translations = {
       play: 'Воспроизвести',
       pause: 'Пауза',
       micRetry: 'Повторить запрос',
+      voiceRecordingUnsupported: 'Браузер не поддерживает запись аудио.',
       micUnavailable: 'Микрофон недоступен',
       liveMic: 'Прямой микрофон',
       fullscreen: 'Полный экран',
@@ -166,6 +168,7 @@ const translations = {
       audioUploadRules: 'Аудио: MP3, WAV, OGG. Максимум 50 МБ.',
       videoUploadRules: 'Видео: MP4, WebM. Максимум 1000 МБ.',
       saveMicRecordingError: 'Не удалось сохранить запись с микрофона.',
+      recordingUnsupported: 'Браузер не поддерживает запись аудио.',
       recordingSavedToLibrary: 'Запись сохранена в медиатеку ведущего.',
       recordingAddedToPlaylist: 'Запись добавлена в текущий плейлист.',
       recordingAddedToAir: 'Запись добавлена в эфир и включена для слушателей.',
@@ -352,6 +355,7 @@ const translations = {
       play: 'Play',
       pause: 'Pause',
       micRetry: 'Request access again',
+      voiceRecordingUnsupported: 'This browser does not support audio recording.',
       micUnavailable: 'Microphone unavailable',
       liveMic: 'Live microphone',
       fullscreen: 'Fullscreen',
@@ -431,6 +435,7 @@ const translations = {
       audioUploadRules: 'Audio: MP3, WAV, OGG. Maximum 50 MB.',
       videoUploadRules: 'Video: MP4, WebM. Maximum 1000 MB.',
       saveMicRecordingError: 'Failed to save the microphone recording.',
+      recordingUnsupported: 'This browser does not support audio recording.',
       recordingSavedToLibrary: 'The recording has been saved to the host media library.',
       recordingAddedToPlaylist: 'The recording has been added to the current playlist.',
       recordingAddedToAir: 'The recording has been pushed to the broadcast for listeners.',
@@ -539,16 +544,13 @@ function resolveTranslation(language, path) {
   return path.split('.').reduce((value, key) => value?.[key], translations[language])
 }
 
-const initialLanguage =
-  typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) || 'ru' : 'ru'
+const initialLanguage = getStoredValue(STORAGE_KEY, 'ru')
 
 export const useLanguage = create((set, get) => ({
   language: initialLanguage,
   setLanguage: (language) => {
     const nextLanguage = language === 'en' ? 'en' : 'ru'
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, nextLanguage)
-    }
+    setStoredValue(STORAGE_KEY, nextLanguage)
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('lang', nextLanguage)
     }

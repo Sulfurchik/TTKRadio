@@ -1,4 +1,5 @@
 import api from './api'
+import { clearSession } from '../utils/session'
 
 function appendFormFile(formData, fieldName, file, fallbackName = 'upload.bin') {
   const fileName = file?.name || file?.filename || fallbackName
@@ -32,8 +33,7 @@ export const authService = {
   },
 
   logout: () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearSession()
   }
 }
 

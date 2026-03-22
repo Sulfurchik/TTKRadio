@@ -347,6 +347,15 @@ configure_environment() {
   upsert_env "$env_file" "STORAGE_PATH" "$INSTALL_DIR/backend/storage"
   upsert_env "$env_file" "CORS_ORIGINS" "$cors_origins"
   upsert_env "$env_file" "ALLOWED_AUDIO_FORMATS" "[\"mp3\",\"wav\",\"ogg\",\"webm\",\"m4a\"]"
+  upsert_env "$env_file" "RATE_LIMIT_WINDOW_SECONDS" "60"
+  upsert_env "$env_file" "RATE_LIMIT_LOGIN_MAX" "12"
+  upsert_env "$env_file" "RATE_LIMIT_REGISTER_MAX" "6"
+  upsert_env "$env_file" "RATE_LIMIT_MESSAGE_MAX" "20"
+  upsert_env "$env_file" "RATE_LIMIT_UPLOAD_MAX" "12"
+  upsert_env "$env_file" "RATE_LIMIT_WS_CONNECT_MAX" "10"
+  upsert_env "$env_file" "WEBSOCKET_IDLE_TIMEOUT_SECONDS" "45"
+  upsert_env "$env_file" "MAX_WEBSOCKET_BINARY_BYTES" "262144"
+  upsert_env "$env_file" "MAX_WEBSOCKET_TEXT_BYTES" "4096"
   upsert_env "$env_file" "DEFAULT_ADMIN_LOGIN" "$ADMIN_LOGIN"
   upsert_env "$env_file" "DEFAULT_ADMIN_PASSWORD" "$ADMIN_PASSWORD"
   upsert_env "$env_file" "DEFAULT_ADMIN_FIO" "Администратор Системы"
@@ -452,14 +461,27 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_buffering off;
         proxy_cache_bypass \$http_upgrade;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
         proxy_read_timeout 86400;
     }
 
-    location /storage/ {
-        alias ${INSTALL_DIR}/backend/storage/;
+    location /storage/audio/ {
+        alias ${INSTALL_DIR}/backend/storage/audio/;
         try_files \$uri =404;
         expires 30d;
         add_header Cache-Control "public";
+    }
+
+    location /storage/video/ {
+        alias ${INSTALL_DIR}/backend/storage/video/;
+        try_files \$uri =404;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+
+    location /storage/ {
+        return 404;
     }
 
     location / {

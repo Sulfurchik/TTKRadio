@@ -10,7 +10,7 @@ from app.schemas import (
     UserResponse,
     VoiceMessageResponse,
 )
-from app.services.media import build_storage_url, get_media_duration
+from app.services.media import build_storage_url, build_voice_message_url, get_media_duration
 
 
 def as_utc(dt: datetime | None) -> datetime | None:
@@ -80,7 +80,7 @@ def serialize_voice_message(voice_message) -> VoiceMessageResponse:
         user_fio=voice_message.user.fio if getattr(voice_message, "user", None) else None,
         host_id=voice_message.host_id,
         file_path=voice_message.file_path,
-        storage_url=build_storage_url(voice_message.file_path),
+        storage_url=build_voice_message_url(voice_message.id),
         duration=resolved_duration,
         status=voice_message.status,
         created_at=as_utc(voice_message.created_at),

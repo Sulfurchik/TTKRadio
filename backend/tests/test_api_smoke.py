@@ -167,6 +167,42 @@ class BackendSmokeTest(unittest.TestCase):
             error.close()
             return error.code, payload
 
+    @classmethod
+    def request_binary(
+        cls,
+        method: str,
+        path: str,
+        *,
+        headers: dict | None = None,
+        json_body: dict | None = None,
+        form_fields: dict | None = None,
+        files: dict | None = None,
+    ) -> tuple[int, bytes]:
+        request_headers = dict(headers or {})
+        body = None
+
+        if json_body is not None:
+            body = json.dumps(json_body).encode("utf-8")
+            request_headers["Content-Type"] = "application/json"
+        elif form_fields is not None or files is not None:
+            content_type, body = build_multipart_body(form_fields, files)
+            request_headers["Content-Type"] = content_type
+
+        request = urllib.request.Request(
+            url=f"{cls.base_url}{path}",
+            data=body,
+            headers=request_headers,
+            method=method,
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as error:
+            payload = error.read()
+            error.close()
+            return error.code, payload
+
     def auth_headers(self, token: str) -> dict:
         return {"Authorization": f"Bearer {token}"}
 
@@ -180,6 +216,12 @@ class BackendSmokeTest(unittest.TestCase):
         return payload
 
     def test_full_backend_flow(self):
+        status, payload = self.request("GET", "/health/ready")
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["status"], "ready")
+        self.assertTrue(payload["checks"]["database"])
+        self.assertTrue(payload["checks"]["storage"])
+
         listener_payload = {
             "login": "listener",
             "fio": "Иван Иванов",
@@ -575,12 +617,36 @@ class BackendSmokeTest(unittest.TestCase):
         status, payload = self.request("GET", "/api/player/voice-messages", headers=listener_headers)
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["storage_url"], f"/api/player/voice-messages/{payload[0]['id']}/file")
 
         status, payload = self.request("GET", "/api/host/voice-messages", headers=host_headers)
         self.assertEqual(status, 200, payload)
         listener_voice_message = next(item for item in payload if item["user_login"] == "listener")
         voice_message_id = listener_voice_message["id"]
         self.assertEqual(listener_voice_message["status"], "new")
+        self.assertEqual(listener_voice_message["storage_url"], f"/api/player/voice-messages/{voice_message_id}/file")
+
+        status, raw_payload = self.request_binary(
+            "GET",
+            listener_voice_message["storage_url"],
+        )
+        self.assertEqual(status, 401, raw_payload)
+
+        status, raw_payload = self.request_binary(
+            "GET",
+            listener_voice_message["storage_url"],
+            headers=listener_headers,
+        )
+        self.assertEqual(status, 200, raw_payload)
+        self.assertGreater(len(raw_payload), 100)
+
+        status, raw_payload = self.request_binary(
+            "GET",
+            listener_voice_message["storage_url"],
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, raw_payload)
+        self.assertGreater(len(raw_payload), 100)
 
         status, payload = self.request(
             "PUT",
@@ -710,7 +776,7 @@ class BackendSmokeTest(unittest.TestCase):
             files={"file": make_audio_stub_file("voice-message.ogg", "audio/ogg")},
         )
         self.assertEqual(status, 200, payload)
-        self.assertTrue(payload["storage_url"].endswith(".ogg"))
+        self.assertEqual(payload["storage_url"], f"/api/player/voice-messages/{payload['id']}/file")
 
         status, payload = self.request(
             "POST",
@@ -719,7 +785,7 @@ class BackendSmokeTest(unittest.TestCase):
             files={"file": make_audio_stub_file("voice-message", "audio/mp4")},
         )
         self.assertEqual(status, 200, payload)
-        self.assertTrue(payload["storage_url"].endswith(".m4a"))
+        self.assertEqual(payload["storage_url"], f"/api/player/voice-messages/{payload['id']}/file")
 
         status, payload = self.request(
             "POST",
@@ -758,6 +824,32 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertEqual(status, 200, payload)
         self.assertFalse(payload["is_broadcasting"])
         self.assertIsNone(payload["current_media"])
+
+    def test_login_rate_limit(self):
+        payload = {
+            "login": "ratelimitlogin",
+            "fio": "Иван Иванов",
+            "password": "ratelimit123!",
+            "password_confirm": "ratelimit123!",
+        }
+
+        status, response_payload = self.request("POST", "/api/auth/register", json_body=payload)
+        self.assertEqual(status, 201, response_payload)
+
+        saw_rate_limit = False
+        for _ in range(30):
+            status, response_payload = self.request(
+                "POST",
+                "/api/auth/login",
+                json_body={"login": "ratelimitlogin", "password": "wrong-password"},
+            )
+            if status == 429:
+                saw_rate_limit = True
+                self.assertEqual(response_payload["detail"], "Слишком много запросов. Повторите позже.")
+                break
+            self.assertEqual(status, 401, response_payload)
+
+        self.assertTrue(saw_rate_limit, "Expected login rate limiting to trigger")
 
     def test_single_public_broadcast_owner(self):
         first_host_payload = {

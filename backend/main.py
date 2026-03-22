@@ -1,9 +1,11 @@
+import logging
 from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
 from api.admin.admin_router import router as admin_router
@@ -15,9 +17,11 @@ from app.constants import DEFAULT_ROLES, RoleName
 from app.database import async_session_maker, init_db
 from app.models import Role, User
 from app.services.auth import hash_password
-from app.services.media import ensure_storage_structure
+from app.services.media import ensure_storage_structure, storage_root
 from config.settings import settings
 
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -34,7 +38,8 @@ app.add_middleware(
 )
 
 ensure_storage_structure()
-app.mount("/storage", StaticFiles(directory=settings.STORAGE_PATH), name="storage")
+app.mount("/storage/audio", StaticFiles(directory=storage_root() / "audio"), name="storage-audio")
+app.mount("/storage/video", StaticFiles(directory=storage_root() / "video"), name="storage-video")
 
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -128,3 +133,30 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    checks = {
+        "database": False,
+        "storage": False,
+    }
+
+    try:
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+        checks["database"] = True
+    except Exception:
+        logger.warning("Readiness database check failed")
+
+    try:
+        root = storage_root()
+        required_dirs = ("audio", "video", "voice_messages")
+        checks["storage"] = all((root / directory_name).exists() for directory_name in required_dirs)
+    except Exception:
+        logger.warning("Readiness storage check failed")
+
+    if all(checks.values()):
+        return {"status": "ready", "checks": checks}
+
+    return JSONResponse(status_code=503, content={"status": "not_ready", "checks": checks})

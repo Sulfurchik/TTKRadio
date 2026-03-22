@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 
 import { getLocale, useLanguage } from '../hooks/useLanguage'
 import { formatProjectDateTime } from '../utils/dateTime'
+import { getSessionToken } from '../utils/session'
 
 function MessagesList({ messages, onStatusChange, showArchive = false }) {
   const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
   const locale = getLocale(language)
   const audioRef = useRef(null)
+  const audioObjectUrlRef = useRef(null)
   const [activeVoiceId, setActiveVoiceId] = useState(null)
 
   useEffect(() => {
@@ -16,8 +18,27 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
         audioRef.current.pause()
         audioRef.current = null
       }
+      if (audioObjectUrlRef.current) {
+        URL.revokeObjectURL(audioObjectUrlRef.current)
+        audioObjectUrlRef.current = null
+      }
     }
   }, [])
+
+  const cleanupVoicePlayback = () => {
+    const activeAudio = audioRef.current
+    audioRef.current = null
+    if (activeAudio) {
+      activeAudio.onended = null
+      activeAudio.onpause = null
+      activeAudio.pause()
+    }
+    if (audioObjectUrlRef.current) {
+      URL.revokeObjectURL(audioObjectUrlRef.current)
+      audioObjectUrlRef.current = null
+    }
+    setActiveVoiceId(null)
+  }
 
   const getStatusClass = (status) => {
     switch (status) {
@@ -43,33 +64,52 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
     }
 
     if (activeVoiceId === message.id && audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
-      setActiveVoiceId(null)
+      cleanupVoicePlayback()
       return
     }
 
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (audioRef.current || audioObjectUrlRef.current) {
+      cleanupVoicePlayback()
     }
 
-    const audio = new Audio(message.storage_url)
+    const token = getSessionToken()
+    if (!token) {
+      return
+    }
+
+    let response
+    try {
+      response = await fetch(message.storage_url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    } catch (error) {
+      return
+    }
+
+    if (!response.ok) {
+      return
+    }
+
+    const audioBlob = await response.blob()
+    const objectUrl = URL.createObjectURL(audioBlob)
+    audioObjectUrlRef.current = objectUrl
+
+    const audio = new Audio(objectUrl)
     audioRef.current = audio
     audio.onended = () => {
       if (audioRef.current === audio) {
-        audioRef.current = null
+        cleanupVoicePlayback()
       }
-      setActiveVoiceId(null)
     }
     audio.onpause = () => {
       if (audio.ended) {
         return
       }
       if (audioRef.current === audio) {
-        audioRef.current = null
+        cleanupVoicePlayback()
       }
-      setActiveVoiceId(prev => (prev === message.id ? null : prev))
     }
 
     try {
@@ -77,9 +117,8 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
       setActiveVoiceId(message.id)
     } catch (error) {
       if (audioRef.current === audio) {
-        audioRef.current = null
+        cleanupVoicePlayback()
       }
-      setActiveVoiceId(null)
     }
   }
 

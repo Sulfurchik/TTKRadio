@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -56,6 +56,7 @@ from app.services.media import (
     save_upload_file,
     sanitize_display_name,
 )
+from app.services.rate_limit import build_rate_limit_key, get_request_client_ip, rate_limiter
 from app.services.serializers import (
     serialize_broadcast_status,
     serialize_media,
@@ -126,10 +127,16 @@ async def get_media_library(
 
 @router.post("/media/upload", response_model=MediaResponse)
 async def upload_media(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
+    await rate_limiter.enforce(
+        build_rate_limit_key("host:upload", get_request_client_ip(request), current_user.id),
+        limit=settings.RATE_LIMIT_UPLOAD_MAX,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
     resolved_extension = resolve_upload_extension(
         file,
         allowed_extensions=set(settings.ALLOWED_AUDIO_FORMATS + settings.ALLOWED_VIDEO_FORMATS),
@@ -636,6 +643,7 @@ async def update_voice_message_status(
 
 @router.post("/record", response_model=MediaResponse)
 async def record_audio(
+    request: Request,
     file: UploadFile = File(...),
     target_mode: str = Form("library"),
     playlist_id: Optional[int] = Form(None),
@@ -643,6 +651,11 @@ async def record_audio(
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
+    await rate_limiter.enforce(
+        build_rate_limit_key("host:record", get_request_client_ip(request), current_user.id),
+        limit=settings.RATE_LIMIT_UPLOAD_MAX,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
     normalized_mode = (target_mode or "library").strip().lower()
     if normalized_mode not in {"library", "playlist", "air"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неизвестный режим сохранения записи")

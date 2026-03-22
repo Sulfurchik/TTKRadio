@@ -7,6 +7,7 @@ import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useLiveAudioStream } from '../hooks/useLiveAudioStream'
 import { playerService } from '../services'
 import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
+import { getStoredValue, setStoredValue } from '../utils/browserStorage'
 import { clampUnitValue } from '../utils/liveStream'
 import { getApiErrorMessage } from '../utils/apiError'
 import { getMediaDisplayName } from '../utils/media'
@@ -62,7 +63,7 @@ function PlayerPage() {
   const [notice, setNotice] = useState(null)
   const [isPlayerManuallyPaused, setIsPlayerManuallyPaused] = useState(false)
   const [volume, setVolume] = useState(() => {
-    const saved = localStorage.getItem('player_volume')
+    const saved = getStoredValue('player_volume')
     return clampUnitValue(saved, 0.8)
   })
 
@@ -115,7 +116,7 @@ function PlayerPage() {
   })
 
   useEffect(() => {
-    localStorage.setItem('player_volume', volume.toString())
+    setStoredValue('player_volume', volume.toString())
   }, [volume])
 
   useEffect(() => {
@@ -335,6 +336,10 @@ function PlayerPage() {
 
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('MediaRecorder is not supported')
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -375,7 +380,11 @@ function PlayerPage() {
       setIsRecording(true)
       setNotice(null)
     } catch (error) {
-      showMicrophoneAccessNotice()
+      if (String(error?.message || '').includes('MediaRecorder')) {
+        setNotice({ type: 'error', text: t('player.voiceRecordingUnsupported') })
+      } else {
+        showMicrophoneAccessNotice()
+      }
     }
   }
 

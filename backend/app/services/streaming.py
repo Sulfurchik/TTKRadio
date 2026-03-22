@@ -1,8 +1,12 @@
 import asyncio
 import json
 from collections import defaultdict
+import logging
 
 from fastapi import WebSocket
+
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
@@ -31,7 +35,8 @@ class ConnectionManager:
 
     async def connect_host(self, websocket: WebSocket, host_id: str) -> None:
         await websocket.accept()
-        self.host_connections[host_id].append(websocket)
+        if websocket not in self.host_connections[host_id]:
+            self.host_connections[host_id].append(websocket)
 
     def disconnect_host(self, websocket: WebSocket, host_id: str) -> None:
         connections = self.host_connections.get(host_id, [])
@@ -45,9 +50,14 @@ class ConnectionManager:
 
     async def connect_listener(self, websocket: WebSocket) -> None:
         await websocket.accept()
-        self.listener_connections.append(websocket)
+        if websocket not in self.listener_connections:
+            self.listener_connections.append(websocket)
         if self.live_audio_metadata and self.live_audio_host_id is not None:
-            await websocket.send_json(self.live_audio_metadata)
+            try:
+                await websocket.send_json(self.live_audio_metadata)
+            except Exception:
+                logger.warning("Failed to send live audio metadata to listener")
+                self.disconnect_listener(websocket)
 
     def disconnect_listener(self, websocket: WebSocket) -> None:
         if websocket in self.listener_connections:
@@ -68,6 +78,10 @@ class ConnectionManager:
                 self.live_audio_metadata = parsed_payload
             elif event_type == "live_audio_stop":
                 self.live_audio_metadata = None
+            elif event_type == "ping":
+                return
+        elif payload == "ping":
+            return
 
         listeners = list(self.listener_connections)
         results = await asyncio.gather(

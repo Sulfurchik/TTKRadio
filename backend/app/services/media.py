@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from uuid import uuid4
 
@@ -30,6 +31,7 @@ VIDEO_CONTENT_TYPE_EXTENSION_MAP = {
     "video/mp4": "mp4",
     "video/webm": "webm",
 }
+logger = logging.getLogger(__name__)
 
 
 def storage_root() -> Path:
@@ -45,6 +47,10 @@ def ensure_storage_structure() -> None:
 
 def build_storage_url(relative_path: str) -> str:
     return f"/storage/{relative_path}"
+
+
+def build_voice_message_url(voice_message_id: int) -> str:
+    return f"/api/player/voice-messages/{voice_message_id}/file"
 
 
 def resolve_storage_path(relative_path: str) -> Path:
@@ -78,6 +84,12 @@ def resolve_upload_extension(
     if inferred_extension in allowed_extensions:
         return inferred_extension
 
+    logger.warning(
+        "Rejected upload with unsupported format: filename=%r content_type=%r allowed_extensions=%s",
+        upload_file.filename,
+        upload_file.content_type,
+        sorted(allowed_extensions),
+    )
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неподдерживаемый формат")
 
 
@@ -126,6 +138,12 @@ async def save_upload_file(
                     break
                 current_size += len(chunk)
                 if current_size > max_size_bytes:
+                    logger.warning(
+                        "Rejected upload larger than limit: filename=%r size=%s limit=%s",
+                        upload_file.filename,
+                        current_size,
+                        max_size_bytes,
+                    )
                     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Файл слишком большой")
                 await buffer.write(chunk)
     except Exception:
@@ -133,6 +151,11 @@ async def save_upload_file(
         raise
     finally:
         await upload_file.close()
+
+    if current_size <= 0:
+        logger.warning("Rejected empty upload: filename=%r", upload_file.filename)
+        target_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Файл пустой")
 
     return f"{folder_name}/{target_path.name}", current_size, extension
 
@@ -157,5 +180,6 @@ def get_media_duration(relative_path: str) -> float:
             if length is not None:
                 return float(length)
     except Exception:
+        logger.warning("Could not resolve media duration for %s", relative_path)
         return 0.0
     return 0.0

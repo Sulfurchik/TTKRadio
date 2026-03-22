@@ -7,6 +7,7 @@ import PlayerPage from './pages/PlayerPage'
 import AdminPage from './pages/AdminPage'
 import HostPage from './pages/HostPage'
 import Navbar from './components/Navbar'
+import { getSessionToken } from './utils/session'
 
 function App() {
   const { isAuthenticated, user, isLoading, checkAuth, syncPresence } = useAuthStore()
@@ -27,7 +28,7 @@ function App() {
     }, 15000)
 
     const markOfflineOnHide = () => {
-      const token = localStorage.getItem('token')
+      const token = getSessionToken()
       if (!token) {
         return
       }

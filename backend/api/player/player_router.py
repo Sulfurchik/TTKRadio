@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+import mimetypes
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.constants import RoleName
 from app.database import get_db
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, user_has_role
 from app.models import Message, User, VoiceMessage
 from app.schemas import (
     BroadcastStatusResponse,
@@ -14,7 +18,13 @@ from app.schemas import (
     VoiceMessageResponse,
 )
 from app.services.broadcast import get_public_broadcast_state
-from app.services.media import AUDIO_CONTENT_TYPE_EXTENSION_MAP, get_media_duration, save_upload_file
+from app.services.media import (
+    AUDIO_CONTENT_TYPE_EXTENSION_MAP,
+    get_media_duration,
+    resolve_storage_path,
+    save_upload_file,
+)
+from app.services.rate_limit import build_rate_limit_key, get_request_client_ip, rate_limiter
 from app.services.serializers import serialize_broadcast_status, serialize_message, serialize_voice_message
 from app.services.streaming import manager
 from config.settings import settings
@@ -74,11 +84,17 @@ async def get_current_track(
 
 @router.post("/messages", response_model=MessageResponse)
 async def send_message(
-    request: MessageCreateRequest,
+    payload: MessageCreateRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    message = Message(user_id=current_user.id, text=request.text, status="new")
+    await rate_limiter.enforce(
+        build_rate_limit_key("player:message", get_request_client_ip(request), current_user.id),
+        limit=settings.RATE_LIMIT_MESSAGE_MAX,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
+    message = Message(user_id=current_user.id, text=payload.text, status="new")
     db.add(message)
     await db.commit()
 
@@ -107,10 +123,16 @@ async def get_user_messages(
 
 @router.post("/voice", response_model=VoiceMessageResponse)
 async def send_voice_message(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await rate_limiter.enforce(
+        build_rate_limit_key("player:voice", get_request_client_ip(request), current_user.id),
+        limit=settings.RATE_LIMIT_UPLOAD_MAX,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
     relative_path, _, _ = await save_upload_file(
         file,
         folder_name="voice_messages",
@@ -148,6 +170,32 @@ async def get_user_voice_messages(
         .limit(100)
     )
     return [serialize_voice_message(message) for message in result.scalars().all()]
+
+
+@router.get("/voice-messages/{voice_message_id}/file")
+async def get_voice_message_file(
+    voice_message_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(VoiceMessage).where(VoiceMessage.id == voice_message_id))
+    voice_message = result.scalar_one_or_none()
+    if voice_message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Голосовое сообщение не найдено")
+
+    if voice_message.user_id != current_user.id and not user_has_role(
+        current_user,
+        RoleName.HOST.value,
+        RoleName.ADMIN.value,
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Недостаточно прав")
+
+    file_path = resolve_storage_path(voice_message.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Файл голосового сообщения не найден")
+
+    media_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    return FileResponse(path=file_path, media_type=media_type, filename=file_path.name)
 
 
 @router.get("/broadcast-status", response_model=BroadcastStatusResponse)

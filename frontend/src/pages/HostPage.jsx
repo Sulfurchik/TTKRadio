@@ -8,6 +8,7 @@ import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useAuthStore } from '../store/authStore'
 import { hostService } from '../services'
 import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
+import { getStoredValue, setStoredValue } from '../utils/browserStorage'
 import {
   buildWebSocketUrl,
   clampUnitValue,
@@ -16,6 +17,7 @@ import {
   getAudioContextClass,
 } from '../utils/liveStream'
 import { getApiErrorMessage } from '../utils/apiError'
+import { getSessionToken } from '../utils/session'
 import {
   buildRecordedAudioFile,
   createAudioRecorder,
@@ -72,9 +74,9 @@ function HostPage() {
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false)
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null)
   const [notice, setNotice] = useState(null)
-  const [monitorEnabled, setMonitorEnabled] = useState(() => localStorage.getItem('host_monitor_enabled') === 'true')
+  const [monitorEnabled, setMonitorEnabled] = useState(() => getStoredValue('host_monitor_enabled') === 'true')
   const [monitorVolume, setMonitorVolume] = useState(() => {
-    const savedVolume = localStorage.getItem('host_monitor_volume')
+    const savedVolume = getStoredValue('host_monitor_volume')
     return clampUnitValue(savedVolume, 0.55)
   })
   const [broadcastVolume, setBroadcastVolume] = useState(1)
@@ -101,6 +103,7 @@ function HostPage() {
   const liveMicProcessorRef = useRef(null)
   const liveMicSilentGainRef = useRef(null)
   const liveMicProcessorCleanupRef = useRef(null)
+  const liveMicPingIntervalRef = useRef(null)
   const monitorVideoRef = useRef(null)
 
   const {
@@ -134,11 +137,11 @@ function HostPage() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('host_monitor_enabled', monitorEnabled.toString())
+    setStoredValue('host_monitor_enabled', monitorEnabled.toString())
   }, [monitorEnabled])
 
   useEffect(() => {
-    localStorage.setItem('host_monitor_volume', monitorVolume.toString())
+    setStoredValue('host_monitor_volume', monitorVolume.toString())
   }, [monitorVolume])
 
   useEffect(() => {
@@ -182,6 +185,10 @@ function HostPage() {
       liveMicSourceNodeRef.current?.disconnect?.()
       liveMicSilentGainRef.current?.disconnect?.()
       liveMicProcessorCleanupRef.current?.()
+      if (liveMicPingIntervalRef.current) {
+        clearInterval(liveMicPingIntervalRef.current)
+        liveMicPingIntervalRef.current = null
+      }
       liveMicAudioContextRef.current?.close?.()
     }
   }, [])
@@ -644,6 +651,10 @@ function HostPage() {
     liveMicSilentGainRef.current = null
     liveMicProcessorCleanupRef.current?.()
     liveMicProcessorCleanupRef.current = null
+    if (liveMicPingIntervalRef.current) {
+      clearInterval(liveMicPingIntervalRef.current)
+      liveMicPingIntervalRef.current = null
+    }
     if (liveMicAudioContextRef.current) {
       liveMicAudioContextRef.current.close().catch(() => {})
       liveMicAudioContextRef.current = null
@@ -689,7 +700,7 @@ function HostPage() {
       return
     }
 
-    const token = localStorage.getItem('token')
+    const token = getSessionToken()
     if (!token) {
       setNotice({ type: 'error', text: t('host.liveMicError') })
       return
@@ -699,6 +710,10 @@ function HostPage() {
     liveMicStoppingRef.current = false
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('MediaRecorder is not supported')
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -739,6 +754,12 @@ function HostPage() {
 
       socket.onopen = async () => {
         try {
+          socket.send('ping')
+          liveMicPingIntervalRef.current = window.setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send('ping')
+            }
+          }, 15000)
           await hostService.startLiveAudioBroadcast()
           socket.send(JSON.stringify({
             type: 'live_audio_start',
@@ -780,7 +801,8 @@ function HostPage() {
       }
     } catch (error) {
       setIsLiveMicConnecting(false)
-      if (String(error?.message || '').includes('not supported')) {
+      const errorMessage = String(error?.message || '')
+      if (errorMessage.includes('not supported') || errorMessage.includes('MediaRecorder')) {
         setNotice({ type: 'error', text: t('host.liveMicUnsupported') })
       } else {
         showMicrophoneAccessNotice(startLiveMicBroadcast)
@@ -803,6 +825,10 @@ function HostPage() {
   const startRecording = async (targetMode = recordingMode) => {
     try {
       setRecordingMode(targetMode)
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('MediaRecorder is not supported')
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -854,7 +880,11 @@ function HostPage() {
       setIsRecording(true)
       setNotice(null)
     } catch (error) {
-      showMicrophoneAccessNotice()
+      if (String(error?.message || '').includes('MediaRecorder')) {
+        setNotice({ type: 'error', text: t('host.recordingUnsupported') })
+      } else {
+        showMicrophoneAccessNotice()
+      }
     }
   }
 

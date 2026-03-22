@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getStoredValue, setStoredValue } from '../utils/browserStorage'
 
 const STORAGE_KEY = 'theme'
 
@@ -19,8 +20,7 @@ function applyTheme(theme, animate = false) {
   root.setAttribute('data-theme', theme)
 }
 
-const initialTheme =
-  typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) || 'light' : 'light'
+const initialTheme = getStoredValue(STORAGE_KEY, 'light')
 
 applyTheme(initialTheme)
 
@@ -28,9 +28,7 @@ export const useTheme = create((set, get) => ({
   theme: initialTheme,
   setTheme: (theme) => {
     const nextTheme = theme === 'dark' ? 'dark' : 'light'
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, nextTheme)
-    }
+    setStoredValue(STORAGE_KEY, nextTheme)
     applyTheme(nextTheme, true)
     set({ theme: nextTheme })
   },

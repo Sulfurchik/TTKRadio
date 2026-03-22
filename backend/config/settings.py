@@ -33,6 +33,17 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_LOGIN_MAX: int = 12
+    RATE_LIMIT_REGISTER_MAX: int = 6
+    RATE_LIMIT_MESSAGE_MAX: int = 20
+    RATE_LIMIT_UPLOAD_MAX: int = 12
+    RATE_LIMIT_WS_CONNECT_MAX: int = 10
+
+    WEBSOCKET_IDLE_TIMEOUT_SECONDS: int = 45
+    MAX_WEBSOCKET_BINARY_BYTES: int = 262144
+    MAX_WEBSOCKET_TEXT_BYTES: int = 4096
+
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",
         env_file_encoding="utf-8",
@@ -75,7 +86,8 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_cors_origins(cls, value):
         if isinstance(value, list):
-            return value
+            normalized = [str(item).strip() for item in value if str(item).strip()]
+            return list(dict.fromkeys(normalized))
         if isinstance(value, str):
             cleaned = value.strip()
             if not cleaned:
@@ -86,8 +98,10 @@ class Settings(BaseSettings):
                 except json.JSONDecodeError:
                     parsed = None
                 if isinstance(parsed, list):
-                    return [str(item).strip() for item in parsed if str(item).strip()]
-            return [item.strip() for item in cleaned.split(",") if item.strip()]
+                    normalized = [str(item).strip() for item in parsed if str(item).strip()]
+                    return list(dict.fromkeys(normalized))
+            normalized = [item.strip() for item in cleaned.split(",") if item.strip()]
+            return list(dict.fromkeys(normalized))
         return value
 
     @field_validator("STORAGE_PATH", mode="before")
@@ -126,6 +140,8 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "DEFAULT_ADMIN_PASSWORD must be strong and not use the default placeholder when DEBUG is disabled"
                 )
+            if "*" in self.CORS_ORIGINS:
+                raise ValueError("CORS_ORIGINS must not contain '*' when DEBUG is disabled")
 
         return self
 

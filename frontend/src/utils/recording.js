@@ -7,6 +7,10 @@ const AUDIO_FORMAT_CANDIDATES = [
   { mimeType: 'audio/mp4', extension: 'm4a' },
 ]
 
+export function isMediaRecorderSupported() {
+  return typeof MediaRecorder !== 'undefined'
+}
+
 function detectFormat(mimeType = '') {
   const normalized = mimeType.toLowerCase()
   if (normalized.includes('ogg')) {
@@ -39,8 +43,16 @@ export function resolveRecordedAudioFormat(...mimeCandidates) {
 }
 
 export function createAudioRecorder(stream) {
+  if (!stream) {
+    throw new Error('Recording stream is not available')
+  }
+
+  if (!isMediaRecorderSupported()) {
+    throw new Error('MediaRecorder is not supported')
+  }
+
   const supportedFormat = AUDIO_FORMAT_CANDIDATES.find((candidate) => {
-    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+    if (typeof MediaRecorder.isTypeSupported !== 'function') {
       return false
     }
     return MediaRecorder.isTypeSupported(candidate.mimeType)

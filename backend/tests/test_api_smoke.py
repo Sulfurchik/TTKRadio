@@ -293,6 +293,17 @@ class BackendSmokeTest(unittest.TestCase):
 
         status, payload = self.request(
             "POST",
+            "/api/host/record",
+            headers=host_headers,
+            files={"file": ("microphone-recording.wav", wav_bytes, wav_content_type)},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["original_name"], "microphone-recording.wav")
+        self.assertGreater(payload["duration"], 0)
+        recorded_media_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
             "/api/host/playlists",
             headers=host_headers,
             json_body={"name": "Утренний эфир"},
@@ -312,11 +323,11 @@ class BackendSmokeTest(unittest.TestCase):
             "POST",
             f"/api/host/playlists/{playlist_id}/items",
             headers=host_headers,
-            json_body={"media_id": second_media_id},
+            json_body={"media_id": recorded_media_id},
         )
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload["items"]), 2)
-        second_item_id = next(item["id"] for item in payload["items"] if item["media_id"] == second_media_id)
+        second_item_id = next(item["id"] for item in payload["items"] if item["media_id"] == recorded_media_id)
 
         status, payload = self.request(
             "POST",
@@ -455,7 +466,7 @@ class BackendSmokeTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload["items"]), 2)
-        self.assertNotIn(second_media_id, [item["media_id"] for item in payload["items"]])
+        self.assertNotIn(recorded_media_id, [item["media_id"] for item in payload["items"]])
 
         status, payload = self.request(
             "POST",

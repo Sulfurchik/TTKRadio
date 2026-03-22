@@ -836,15 +836,8 @@ function HostPage() {
 
         try {
           const savedMedia = await hostService.recordAudio(file)
-          try {
-            await loadMedia()
-            await finalizeRecordedMedia(savedMedia, targetMode)
-          } catch (error) {
-            setNotice({
-              type: 'warning',
-              text: error?.response?.data?.detail || t('host.recordingSavedToLibrary'),
-            })
-          }
+          await loadMedia()
+          await finalizeRecordedMedia(savedMedia, targetMode)
         } catch (error) {
           setNotice({
             type: 'error',

@@ -500,10 +500,10 @@ function PlayerPage() {
                   transition: 'opacity 0.3s ease',
                   background: isPlaybackActive
                     ? 'linear-gradient(135deg, var(--ttk-red), var(--ttk-red-light))'
-                    : 'linear-gradient(135deg, #889096, #5f676d)',
+                    : 'linear-gradient(135deg, rgba(229, 39, 19, 0.92), rgba(255, 107, 85, 0.82))',
                   boxShadow: isPlaybackActive
                     ? '0 28px 50px rgba(229, 39, 19, 0.2)'
-                    : '0 18px 34px rgba(43, 49, 54, 0.2)',
+                    : '0 18px 34px rgba(229, 39, 19, 0.18)',
                 }}
               >
                 {isBuffering && canPlay && (
@@ -602,6 +602,23 @@ function PlayerPage() {
               </div>
             )}
 
+            {!broadcastStatus?.is_broadcasting && (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '0.75rem 1rem 0.25rem',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--page-text)' }}>
+                  {t('player.noBroadcast')}
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {t('player.waitForBroadcast')}
+                </p>
+              </div>
+            )}
+
             <div className="player-controls">
               <button
                 className="player-btn"
@@ -659,24 +676,6 @@ function PlayerPage() {
                 </span>
               </div>
             </div>
-
-            {!broadcastStatus?.is_broadcasting && (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '50%',
-                    border: '2px solid currentColor',
-                    opacity: 0.35,
-                    margin: '0 auto 1.5rem',
-                  }}
-                ></div>
-                <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('player.noBroadcast')}</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('player.waitForBroadcast')}</p>
-              </div>
-            )}
           </div>
         </div>
 

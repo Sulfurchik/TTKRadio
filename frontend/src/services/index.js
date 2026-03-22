@@ -88,10 +88,8 @@ export const playerService = {
 
   sendVoiceMessage: async (file) => {
     const formData = new FormData()
-    formData.append('file', file)
-    const response = await api.post('/player/voice', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    appendFormFile(formData, 'file', file, file?.name || 'voice-message.webm')
+    const response = await api.post('/player/voice', formData)
     return response.data
   },
 
@@ -274,16 +272,14 @@ export const hostService = {
   // Запись
   recordAudio: async (file, options = {}) => {
     const formData = new FormData()
-    formData.append('file', file)
+    appendFormFile(formData, 'file', file, file?.name || 'microphone-recording.webm')
     if (options.targetMode) {
       formData.append('target_mode', options.targetMode)
     }
     if (options.playlistId != null) {
       formData.append('playlist_id', String(options.playlistId))
     }
-    const response = await api.post('/host/record', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const response = await api.post('/host/record', formData)
     return response.data
   }
 }

@@ -8,6 +8,7 @@ import { useLiveAudioStream } from '../hooks/useLiveAudioStream'
 import { playerService } from '../services'
 import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
 import { clampUnitValue } from '../utils/liveStream'
+import { getApiErrorMessage } from '../utils/apiError'
 import { getMediaDisplayName } from '../utils/media'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
@@ -324,7 +325,7 @@ function PlayerPage() {
       await loadMessages()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: t('player.textSendError') })
+      setNotice({ type: 'error', text: getApiErrorMessage(error, t('player.textSendError')) })
     }
   }
 
@@ -394,7 +395,7 @@ function PlayerPage() {
       setVoiceFile(null)
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: t('player.voiceSendError') })
+      setNotice({ type: 'error', text: getApiErrorMessage(error, t('player.voiceSendError')) })
     }
   }
 

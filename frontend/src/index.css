@@ -387,12 +387,14 @@ select {
   margin: 0 auto;
   display: grid;
   grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'brand menu actions';
   align-items: center;
   gap: 1rem;
   padding: 0.9rem 1.5rem;
 }
 
 .navbar-brand {
+  grid-area: brand;
   display: inline-flex;
   align-items: center;
   text-decoration: none;
@@ -405,11 +407,13 @@ select {
 }
 
 .navbar-menu {
+  grid-area: menu;
   display: flex;
   justify-self: center;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .nav-link {
@@ -443,6 +447,7 @@ select {
 }
 
 .navbar-actions {
+  grid-area: actions;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1852,17 +1857,21 @@ select {
 @media (max-width: 780px) {
   .navbar-content {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-areas:
+      'brand . actions'
+      'menu menu menu';
+    align-items: start;
     gap: 0.75rem;
+    row-gap: 0.7rem;
   }
 
   .navbar-menu {
-    justify-self: end;
+    justify-self: stretch;
     overflow-x: auto;
     flex-wrap: nowrap;
-    width: min(100%, 15rem);
-    padding: 0.15rem 0 0.2rem;
-    margin-left: auto;
+    width: 100%;
+    padding: 0.1rem 0 0.35rem;
+    margin-left: 0;
     scroll-snap-type: x mandatory;
     scroll-padding-inline: 0.25rem;
     scrollbar-width: none;
@@ -1878,6 +1887,7 @@ select {
   .nav-link {
     flex: 0 0 auto;
     scroll-snap-align: start;
+    min-width: max-content;
   }
 
   .nav-link.active {
@@ -1890,6 +1900,8 @@ select {
 
   .navbar-actions {
     gap: 0.45rem;
+    width: auto;
+    max-width: 100%;
   }
 
   .container {
@@ -1962,13 +1974,17 @@ select {
 
 @media (max-width: 560px) {
   .auth-page {
-    align-items: start;
-    padding-top: 5rem;
+    place-items: stretch;
+    align-content: start;
+    padding: 1rem 0.95rem 1.5rem;
   }
 
   .auth-page__controls {
-    top: 0.9rem;
-    right: 0.9rem;
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    margin-bottom: 0.75rem;
   }
 
   .navbar-brand img {
@@ -1976,11 +1992,21 @@ select {
   }
 
   .navbar-content {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 0.8rem 0.95rem;
   }
 
   .user-info {
     display: none;
+  }
+
+  .auth-toolbar {
+    margin-left: auto;
+  }
+
+  .auth-card {
+    width: 100%;
+    padding: 1.35rem;
+    border-radius: 24px;
   }
 
   .navbar-actions {
@@ -1988,21 +2014,21 @@ select {
   }
 
   .navbar-menu {
-    width: min(100%, 10.75rem);
+    width: 100%;
   }
 
   .navbar-logout__label {
     display: none;
   }
 
-  .nav-link {
-    min-width: 2.8rem;
-    justify-content: center;
-    padding-inline: 0.85rem;
+  .theme-toggle span:last-child {
+    display: none;
   }
 
-  .nav-link span {
-    display: none;
+  .nav-link {
+    min-width: max-content;
+    justify-content: center;
+    padding-inline: 0.95rem;
   }
 
   .page-hero__actions .btn,

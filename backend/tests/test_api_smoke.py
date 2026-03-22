@@ -24,13 +24,13 @@ def get_free_port() -> int:
         return sock.getsockname()[1]
 
 
-def make_wav_file(filename: str = "sample.wav") -> tuple[str, bytes, str]:
+def make_wav_file(filename: str = "sample.wav", duration_seconds: int = 20) -> tuple[str, bytes, str]:
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as wav_file:
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(8000)
-        wav_file.writeframes(b"\x00\x00" * 8000 * 20)
+        wav_file.writeframes(b"\x00\x00" * 8000 * duration_seconds)
     return filename, buffer.getvalue(), "audio/wav"
 
 
@@ -520,11 +520,19 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertIsNone(payload["current_media"])
 
         status, payload = self.request(
+            "PUT",
+            f"/api/host/playlists/{playlist_id}/toggle-loop",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["is_looping"])
+
+        status, payload = self.request(
             "POST",
             "/api/host/record",
             headers=host_headers,
             form_fields={"target_mode": "air", "playlist_id": playlist_id},
-            files={"file": ("air-recording.wav", wav_bytes, wav_content_type)},
+            files={"file": make_wav_file("air-recording.wav", duration_seconds=1)},
         )
         self.assertEqual(status, 200, payload)
         air_recorded_media_id = payload["id"]
@@ -537,6 +545,16 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertEqual(status, 200, payload)
         self.assertTrue(payload["is_broadcasting"])
         self.assertEqual(payload["current_media"]["id"], air_recorded_media_id)
+
+        time.sleep(1.2)
+        status, payload = self.request(
+            "GET",
+            "/api/host/broadcast/status",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_broadcasting"])
+        self.assertIsNone(payload["current_media"])
 
         status, payload = self.request("GET", "/api/host/messages", headers=host_headers)
         self.assertEqual(status, 200, payload)

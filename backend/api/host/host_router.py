@@ -654,6 +654,7 @@ async def record_audio(
         file_size=file_size,
         duration=get_media_duration(relative_path),
         is_visible_in_library=normalized_mode == "library",
+        is_one_shot_in_air=normalized_mode == "air",
     )
     db.add(media)
     await db.flush()

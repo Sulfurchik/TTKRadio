@@ -90,6 +90,11 @@ def ensure_media_library_columns(sync_conn):
             text("ALTER TABLE media_library ADD COLUMN is_visible_in_library BOOLEAN NOT NULL DEFAULT 1")
         )
 
+    if "is_one_shot_in_air" not in column_names:
+        sync_conn.execute(
+            text("ALTER TABLE media_library ADD COLUMN is_one_shot_in_air BOOLEAN NOT NULL DEFAULT 0")
+        )
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:

@@ -339,7 +339,10 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
             break
 
         remaining_elapsed -= current_duration
-        next_index = resolve_next_index(items, current_index, state.playlist)
+        if current_media.is_one_shot_in_air:
+            next_index = current_index + 1 if current_index + 1 < len(items) else None
+        else:
+            next_index = resolve_next_index(items, current_index, state.playlist)
         if next_index is None:
             state.is_broadcasting = False
             state.is_paused = False

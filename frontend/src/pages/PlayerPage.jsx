@@ -7,6 +7,7 @@ import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useLiveAudioStream } from '../hooks/useLiveAudioStream'
 import { playerService } from '../services'
 import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
+import { clampUnitValue } from '../utils/liveStream'
 import { getMediaDisplayName } from '../utils/media'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
@@ -56,7 +57,7 @@ function PlayerPage() {
   const [isPlayerManuallyPaused, setIsPlayerManuallyPaused] = useState(false)
   const [volume, setVolume] = useState(() => {
     const saved = localStorage.getItem('player_volume')
-    return saved ? parseFloat(saved) : 0.8
+    return clampUnitValue(saved, 0.8)
   })
 
   const mediaRecorderRef = useRef(null)
@@ -294,7 +295,7 @@ function PlayerPage() {
   }
 
   const handleVolumeChange = (event) => {
-    setVolume(parseFloat(event.target.value))
+    setVolume(clampUnitValue(event.target.value, 0.8))
   }
 
   const handleSendMessage = async (event) => {

@@ -8,7 +8,13 @@ import { useBroadcastPlayback } from '../hooks/useBroadcastPlayback'
 import { useAuthStore } from '../store/authStore'
 import { hostService } from '../services'
 import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } from '../utils/broadcastSync'
-import { buildWebSocketUrl, float32ToInt16Buffer, getAudioContextClass } from '../utils/liveStream'
+import {
+  buildWebSocketUrl,
+  clampUnitValue,
+  createLiveInputProcessor,
+  float32ToInt16Buffer,
+  getAudioContextClass,
+} from '../utils/liveStream'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
 function waitForVideoMetadata(video) {
@@ -62,7 +68,7 @@ function HostPage() {
   const [monitorEnabled, setMonitorEnabled] = useState(() => localStorage.getItem('host_monitor_enabled') === 'true')
   const [monitorVolume, setMonitorVolume] = useState(() => {
     const savedVolume = localStorage.getItem('host_monitor_volume')
-    return savedVolume ? parseFloat(savedVolume) : 0.55
+    return clampUnitValue(savedVolume, 0.55)
   })
   const [broadcastVolume, setBroadcastVolume] = useState(1)
   const [isLiveMicActive, setIsLiveMicActive] = useState(false)
@@ -87,6 +93,7 @@ function HostPage() {
   const liveMicSourceNodeRef = useRef(null)
   const liveMicProcessorRef = useRef(null)
   const liveMicSilentGainRef = useRef(null)
+  const liveMicProcessorCleanupRef = useRef(null)
   const monitorVideoRef = useRef(null)
 
   const {
@@ -129,7 +136,7 @@ function HostPage() {
 
   useEffect(() => {
     if (typeof broadcastStatus?.volume === 'number') {
-      setBroadcastVolume(broadcastStatus.volume)
+      setBroadcastVolume(clampUnitValue(broadcastStatus.volume, 1))
     }
   }, [broadcastStatus?.volume])
 
@@ -167,6 +174,7 @@ function HostPage() {
       liveMicProcessorRef.current?.disconnect?.()
       liveMicSourceNodeRef.current?.disconnect?.()
       liveMicSilentGainRef.current?.disconnect?.()
+      liveMicProcessorCleanupRef.current?.()
       liveMicAudioContextRef.current?.close?.()
     }
   }, [])
@@ -605,7 +613,7 @@ function HostPage() {
   }
 
   const handleBroadcastVolumeChange = async (event) => {
-    const nextVolume = parseFloat(event.target.value)
+    const nextVolume = clampUnitValue(event.target.value, 1)
     setBroadcastVolume(nextVolume)
 
     try {
@@ -628,6 +636,8 @@ function HostPage() {
     liveMicSourceNodeRef.current = null
     liveMicSilentGainRef.current?.disconnect?.()
     liveMicSilentGainRef.current = null
+    liveMicProcessorCleanupRef.current?.()
+    liveMicProcessorCleanupRef.current = null
     if (liveMicAudioContextRef.current) {
       liveMicAudioContextRef.current.close().catch(() => {})
       liveMicAudioContextRef.current = null
@@ -700,19 +710,26 @@ function HostPage() {
       const audioContext = new AudioContextClass()
       liveMicAudioContextRef.current = audioContext
       const sourceNode = audioContext.createMediaStreamSource(stream)
-      const processorNode = audioContext.createScriptProcessor(2048, 1, 1)
-      const silentGainNode = audioContext.createGain()
-      silentGainNode.gain.value = 0
 
       liveMicSourceNodeRef.current = sourceNode
-      liveMicProcessorRef.current = processorNode
-      liveMicSilentGainRef.current = silentGainNode
 
       const socket = new WebSocket(
         buildWebSocketUrl(`/api/stream/ws/host/${user.id}?token=${encodeURIComponent(token)}`),
       )
       socket.binaryType = 'arraybuffer'
       liveMicSocketRef.current = socket
+
+      const { processorNode, keepAliveNode, cleanup } = await createLiveInputProcessor(audioContext, (chunk) => {
+        if (socket.readyState !== WebSocket.OPEN) {
+          return
+        }
+
+        socket.send(float32ToInt16Buffer(chunk))
+      })
+
+      liveMicProcessorRef.current = processorNode
+      liveMicSilentGainRef.current = keepAliveNode
+      liveMicProcessorCleanupRef.current = cleanup
 
       socket.onopen = async () => {
         try {
@@ -723,18 +740,7 @@ function HostPage() {
             channels: 1,
           }))
 
-          processorNode.onaudioprocess = (event) => {
-            if (socket.readyState !== WebSocket.OPEN) {
-              return
-            }
-
-            const channelData = event.inputBuffer.getChannelData(0)
-            socket.send(float32ToInt16Buffer(channelData))
-          }
-
           sourceNode.connect(processorNode)
-          processorNode.connect(silentGainNode)
-          silentGainNode.connect(audioContext.destination)
           await audioContext.resume()
           setIsLiveMicActive(true)
           setIsLiveMicConnecting(false)
@@ -945,7 +951,7 @@ function HostPage() {
                     max="1"
                     step="0.01"
                     value={monitorVolume}
-                    onChange={(event) => setMonitorVolume(parseFloat(event.target.value))}
+                    onChange={(event) => setMonitorVolume(clampUnitValue(event.target.value, 0.55))}
                     className="volume-slider"
                     aria-label={t('host.monitoringVolume')}
                   />

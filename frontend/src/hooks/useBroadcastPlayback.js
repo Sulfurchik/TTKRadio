@@ -7,6 +7,15 @@ import {
   SYNC_TOLERANCE_SECONDS,
 } from '../utils/broadcastSync'
 
+function clampMediaVolume(value) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return 1
+  }
+
+  return Math.max(0, Math.min(1, numericValue))
+}
+
 
 function absolutizeSource(source) {
   if (!source || typeof window === 'undefined') {
@@ -96,7 +105,7 @@ export function useBroadcastPlayback({
         cancelAnimationFrame(volumeAnimationFrameRef.current)
         volumeAnimationFrameRef.current = null
       }
-      audio.volume = effectiveVolume
+      audio.volume = clampMediaVolume(effectiveVolume)
       return
     }
 
@@ -110,7 +119,7 @@ export function useBroadcastPlayback({
 
     const animateStep = (timestamp) => {
       const progress = Math.min((timestamp - startedAt) / durationMs, 1)
-      audio.volume = startVolume + (effectiveVolume - startVolume) * progress
+      audio.volume = clampMediaVolume(startVolume + (effectiveVolume - startVolume) * progress)
       if (progress < 1) {
         volumeAnimationFrameRef.current = requestAnimationFrame(animateStep)
       } else {

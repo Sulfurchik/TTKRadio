@@ -344,19 +344,38 @@ function PlayerPage() {
         }
       }
 
-      recorder.onstop = () => {
-        const chunkType = audioChunksRef.current[0]?.type
-        const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
-        const blob = new Blob(audioChunksRef.current, { type: blobType })
+      recorder.onerror = () => {
         stopMediaStream(mediaStreamRef.current)
         mediaStreamRef.current = null
+        audioChunksRef.current = []
+        mediaRecorderRef.current = null
+        setIsRecording(false)
+        setVoiceFile(null)
+        setNotice({ type: 'error', text: t('player.voiceSendError') })
+      }
 
-        if (blob.size === 0) {
+      recorder.onstop = () => {
+        try {
+          const chunkType = audioChunksRef.current[0]?.type
+          const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
+          const blob = new Blob(audioChunksRef.current, { type: blobType })
+
+          if (blob.size === 0) {
+            setVoiceFile(null)
+            return
+          }
+
+          setVoiceFile(buildRecordedAudioFile(blob, 'voice-message', { mimeType: blobType, extension }))
+        } catch (error) {
           setVoiceFile(null)
-          return
+          setNotice({ type: 'error', text: t('player.voiceSendError') })
+        } finally {
+          stopMediaStream(mediaStreamRef.current)
+          mediaStreamRef.current = null
+          audioChunksRef.current = []
+          mediaRecorderRef.current = null
+          setIsRecording(false)
         }
-
-        setVoiceFile(buildRecordedAudioFile(blob, 'voice-message', { mimeType: blobType, extension }))
       }
 
       recorder.start()
@@ -373,9 +392,17 @@ function PlayerPage() {
       return
     }
 
-    mediaRecorderRef.current.stop()
-    mediaRecorderRef.current = null
-    setIsRecording(false)
+    try {
+      mediaRecorderRef.current.stop()
+    } catch (error) {
+      stopMediaStream(mediaStreamRef.current)
+      mediaStreamRef.current = null
+      audioChunksRef.current = []
+      mediaRecorderRef.current = null
+      setIsRecording(false)
+      setVoiceFile(null)
+      setNotice({ type: 'error', text: t('player.voiceSendError') })
+    }
   }
 
   const sendVoiceMessage = async () => {
@@ -525,14 +552,11 @@ function PlayerPage() {
                 <div
                   aria-hidden="true"
                   style={{
-                    width: '76px',
-                    height: '76px',
-                    borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.72)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 0 0 10px rgba(255,255,255,0.08)',
+                    width: '100%',
+                    height: '100%',
                   }}
                 >
                   <svg width="34" height="34" fill="none" stroke="rgba(255,255,255,0.92)" viewBox="0 0 24 24">

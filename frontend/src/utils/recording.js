@@ -46,9 +46,29 @@ export function createAudioRecorder(stream) {
 
 export function buildRecordedAudioFile(blob, baseName, format) {
   const resolvedFormat = format?.extension ? format : inferFormat(blob.type)
-  return new File([blob], `${baseName}.${resolvedFormat.extension}`, {
-    type: blob.type || resolvedFormat.mimeType,
-  })
+  const fileName = `${baseName}.${resolvedFormat.extension}`
+  const fileType = blob.type || resolvedFormat.mimeType
+
+  try {
+    return new File([blob], fileName, {
+      type: fileType,
+    })
+  } catch (error) {
+    const fallbackBlob = blob.slice(0, blob.size, fileType)
+    Object.defineProperty(fallbackBlob, 'name', {
+      configurable: true,
+      enumerable: true,
+      value: fileName,
+      writable: false,
+    })
+    Object.defineProperty(fallbackBlob, 'lastModified', {
+      configurable: true,
+      enumerable: true,
+      value: Date.now(),
+      writable: false,
+    })
+    return fallbackBlob
+  }
 }
 
 export function stopMediaStream(stream) {

@@ -1,5 +1,10 @@
 import api from './api'
 
+function appendFormFile(formData, fieldName, file, fallbackName = 'upload.bin') {
+  const fileName = file?.name || file?.filename || fallbackName
+  formData.append(fieldName, file, fileName)
+}
+
 export const authService = {
   login: async (login, password) => {
     const response = await api.post('/auth/login', { login, password })
@@ -83,7 +88,7 @@ export const playerService = {
 
   sendVoiceMessage: async (file) => {
     const formData = new FormData()
-    formData.append('file', file)
+    appendFormFile(formData, 'file', file, 'voice-message.webm')
     const response = await api.post('/player/voice', formData)
     return response.data
   },
@@ -113,7 +118,7 @@ export const hostService = {
 
   uploadMedia: async (file) => {
     const formData = new FormData()
-    formData.append('file', file)
+    appendFormFile(formData, 'file', file, file?.name || 'media-upload.bin')
     const response = await api.post('/host/media/upload', formData)
     return response.data
   },
@@ -267,7 +272,7 @@ export const hostService = {
   // Запись
   recordAudio: async (file) => {
     const formData = new FormData()
-    formData.append('file', file)
+    appendFormFile(formData, 'file', file, 'microphone-recording.webm')
     const response = await api.post('/host/record', formData)
     return response.data
   }

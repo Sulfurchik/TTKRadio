@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.constants import BroadcastMode
 from app.models import BroadcastHistory, BroadcastState, MediaLibrary, Playlist, playlist_items
+from app.services.media import get_media_duration
 
 
 async def get_playlist_items(db, playlist_id: int) -> list[dict]:
@@ -282,6 +283,24 @@ async def create_history_entry(db, state: BroadcastState) -> None:
     )
 
 
+async def ensure_media_duration(db, media: MediaLibrary | None) -> float:
+    if media is None:
+        return 0.0
+
+    current_duration = float(media.duration or 0)
+    if current_duration > 0:
+        return current_duration
+
+    resolved_duration = get_media_duration(media.file_path)
+    if resolved_duration > 0:
+        media.duration = resolved_duration
+        media.updated_at = datetime.utcnow()
+        await db.flush()
+        return resolved_duration
+
+    return 0.0
+
+
 async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
     items = await sync_broadcast_state(db, state)
     if (
@@ -313,12 +332,13 @@ async def progress_broadcast_if_needed(db, state: BroadcastState) -> list[dict]:
     has_track_changed = False
     while state.is_broadcasting:
         current_media = items[current_index]["media"]
-        if current_media.duration <= 0:
+        current_duration = await ensure_media_duration(db, current_media)
+        if current_duration <= 0:
             break
-        if remaining_elapsed < current_media.duration:
+        if remaining_elapsed < current_duration:
             break
 
-        remaining_elapsed -= current_media.duration
+        remaining_elapsed -= current_duration
         next_index = resolve_next_index(items, current_index, state.playlist)
         if next_index is None:
             state.is_broadcasting = False

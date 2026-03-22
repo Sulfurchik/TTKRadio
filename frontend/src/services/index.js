@@ -84,9 +84,7 @@ export const playerService = {
   sendVoiceMessage: async (file) => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post('/player/voice', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const response = await api.post('/player/voice', formData)
     return response.data
   },
 
@@ -116,9 +114,7 @@ export const hostService = {
   uploadMedia: async (file) => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post('/host/media/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const response = await api.post('/host/media/upload', formData)
     return response.data
   },
 
@@ -272,9 +268,7 @@ export const hostService = {
   recordAudio: async (file) => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post('/host/record', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const response = await api.post('/host/record', formData)
     return response.data
   }
 }

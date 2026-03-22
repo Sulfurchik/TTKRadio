@@ -10,7 +10,7 @@ from app.schemas import (
     UserResponse,
     VoiceMessageResponse,
 )
-from app.services.media import build_storage_url
+from app.services.media import build_storage_url, get_media_duration
 
 
 def as_utc(dt: datetime | None) -> datetime | None:
@@ -40,12 +40,13 @@ def serialize_user(user) -> UserResponse:
 
 
 def serialize_media(media) -> MediaResponse:
+    resolved_duration = media.duration if (media.duration or 0) > 0 else get_media_duration(media.file_path)
     return MediaResponse(
         id=media.id,
         original_name=media.original_name,
         file_type=media.file_type,
         file_size=media.file_size,
-        duration=media.duration,
+        duration=resolved_duration,
         created_at=as_utc(media.created_at),
         file_path=media.file_path,
         storage_url=build_storage_url(media.file_path),
@@ -67,6 +68,11 @@ def serialize_message(message) -> MessageResponse:
 
 
 def serialize_voice_message(voice_message) -> VoiceMessageResponse:
+    resolved_duration = (
+        voice_message.duration
+        if (voice_message.duration or 0) > 0
+        else get_media_duration(voice_message.file_path)
+    )
     return VoiceMessageResponse(
         id=voice_message.id,
         user_id=voice_message.user_id,
@@ -75,7 +81,7 @@ def serialize_voice_message(voice_message) -> VoiceMessageResponse:
         host_id=voice_message.host_id,
         file_path=voice_message.file_path,
         storage_url=build_storage_url(voice_message.file_path),
-        duration=voice_message.duration,
+        duration=resolved_duration,
         status=voice_message.status,
         created_at=as_utc(voice_message.created_at),
         updated_at=as_utc(voice_message.updated_at),

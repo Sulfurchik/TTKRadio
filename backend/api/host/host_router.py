@@ -151,7 +151,7 @@ async def upload_media(
         original_name=sanitize_display_name(file.filename, fallback="Файл"),
         file_type=file_type,
         file_size=file_size,
-        duration=get_media_duration(relative_path) if file_type == MediaType.AUDIO.value else 0.0,
+        duration=get_media_duration(relative_path),
     )
     db.add(media)
     await db.commit()

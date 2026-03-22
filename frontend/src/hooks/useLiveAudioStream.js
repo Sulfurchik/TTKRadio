@@ -139,7 +139,6 @@ export function useLiveAudioStream({
 
       socket.onopen = async () => {
         setIsConnected(true)
-        await ensureAudioContext().catch(() => {})
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current)
         }

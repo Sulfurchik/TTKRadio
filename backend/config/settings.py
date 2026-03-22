@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     MAX_AUDIO_SIZE_MB: int = 50
     MAX_VIDEO_SIZE_MB: int = 1000
     MAX_VOICE_MESSAGE_SIZE_MB: int = 50
-    ALLOWED_AUDIO_FORMATS: List[str] = ["mp3", "wav", "ogg", "webm"]
+    ALLOWED_AUDIO_FORMATS: List[str] = ["mp3", "wav", "ogg", "webm", "m4a"]
     ALLOWED_VIDEO_FORMATS: List[str] = ["mp4", "webm"]
     STORAGE_PATH: str = str(BACKEND_DIR / "storage")
 

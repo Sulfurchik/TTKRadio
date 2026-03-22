@@ -213,12 +213,26 @@ function HostPage() {
       }
 
       const targetPosition = getSyncedPositionSeconds(broadcastStatus)
+      const mediaDuration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0
+      if (mediaDuration > 0 && targetPosition >= mediaDuration - 0.12) {
+        video.pause()
+        try {
+          video.currentTime = mediaDuration
+        } catch (error) {
+          console.debug('Не удалось корректно завершить предпросмотр видео', error)
+        }
+        return
+      }
+
       if (
         Number.isFinite(targetPosition) &&
         Math.abs((video.currentTime || 0) - targetPosition) > SYNC_TOLERANCE_SECONDS
       ) {
         try {
-          video.currentTime = Math.max(0, targetPosition)
+          const safeTargetPosition = mediaDuration > 0
+            ? Math.min(Math.max(0, targetPosition), mediaDuration)
+            : Math.max(0, targetPosition)
+          video.currentTime = safeTargetPosition
         } catch (error) {
           console.debug('Не удалось синхронизировать предпросмотр видео', error)
         }

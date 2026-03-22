@@ -1,4 +1,6 @@
 const AUDIO_FORMAT_CANDIDATES = [
+  { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'm4a' },
+  { mimeType: 'audio/mp4', extension: 'm4a' },
   { mimeType: 'audio/ogg;codecs=opus', extension: 'ogg' },
   { mimeType: 'audio/ogg', extension: 'ogg' },
   { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
@@ -12,6 +14,9 @@ function inferFormat(mimeType = '') {
   }
   if (normalized.includes('wav') || normalized.includes('wave')) {
     return { mimeType: 'audio/wav', extension: 'wav' }
+  }
+  if (normalized.includes('mp4') || normalized.includes('m4a') || normalized.includes('aac')) {
+    return { mimeType: 'audio/mp4', extension: 'm4a' }
   }
   if (normalized.includes('mpeg') || normalized.includes('mp3')) {
     return { mimeType: 'audio/mpeg', extension: 'mp3' }

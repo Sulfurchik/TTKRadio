@@ -205,12 +205,26 @@ function PlayerPage() {
       }
 
       const targetPosition = getSyncedPositionSeconds(broadcastStatus)
+      const mediaDuration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0
+      if (mediaDuration > 0 && targetPosition >= mediaDuration - 0.12) {
+        video.pause()
+        try {
+          video.currentTime = mediaDuration
+        } catch (error) {
+          console.debug('Не удалось корректно завершить видеопоток', error)
+        }
+        return
+      }
+
       if (
         Number.isFinite(targetPosition) &&
         Math.abs((video.currentTime || 0) - targetPosition) > SYNC_TOLERANCE_SECONDS
       ) {
         try {
-          video.currentTime = Math.max(0, targetPosition)
+          const safeTargetPosition = mediaDuration > 0
+            ? Math.min(Math.max(0, targetPosition), mediaDuration)
+            : Math.max(0, targetPosition)
+          video.currentTime = safeTargetPosition
         } catch (error) {
           console.debug('Не удалось синхронизировать видеопоток', error)
         }
@@ -508,14 +522,83 @@ function PlayerPage() {
                     }}
                   ></div>
                 )}
-                <svg width="80" height="80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                  />
-                </svg>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: '76px',
+                    height: '76px',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.72)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 0 10px rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.92)',
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {(currentTrack || liveMicHintVisible) && (
+              <div
+                className="track-summary-card"
+                style={{
+                  textAlign: 'center',
+                  padding: '1.25rem',
+                  background: 'var(--player-track-bg)',
+                  borderTop: '1px solid var(--player-track-border)',
+                  width: '100%',
+                }}
+              >
+                <p
+                  style={{
+                    fontWeight: 700,
+                    fontFamily: 'PT Sans Caption, sans-serif',
+                    fontSize: '1rem',
+                    color: 'var(--page-text)',
+                    marginBottom: '0.5rem',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {currentTrack ? getMediaDisplayName(currentTrack.original_name) : t('player.micOnlyLive')}
+                </p>
+                <p
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    fontFamily: 'PT Sans Caption, sans-serif',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      background: isPlaybackActive ? 'var(--ttk-red)' : 'var(--text-secondary)',
+                      borderRadius: '50%',
+                      display: 'inline-block',
+                      animation: isPlaybackActive ? 'pulse 1s infinite' : 'none',
+                    }}
+                  ></span>
+                  {currentTrack
+                    ? currentTrack.file_type === 'video'
+                      ? t('player.videoStream')
+                      : t('player.syncedAudioStream')
+                    : t('player.liveMic')}
+                </p>
               </div>
             )}
 
@@ -577,71 +660,19 @@ function PlayerPage() {
               </div>
             </div>
 
-            {(currentTrack || liveMicHintVisible) && (
-              <div
-                className="track-summary-card"
-                style={{
-                  textAlign: 'center',
-                  padding: '1.25rem',
-                  background: 'var(--player-track-bg)',
-                  borderTop: '1px solid var(--player-track-border)',
-                  width: '100%',
-                }}
-              >
-                <p
-                  style={{
-                    fontWeight: 700,
-                    fontFamily: 'PT Sans Caption, sans-serif',
-                    fontSize: '1rem',
-                    color: 'var(--page-text)',
-                    marginBottom: '0.5rem',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {currentTrack ? getMediaDisplayName(currentTrack.original_name) : t('player.micOnlyLive')}
-                </p>
-                <p
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-secondary)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontFamily: 'PT Sans Caption, sans-serif',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      background: isPlaybackActive ? 'var(--ttk-red)' : 'var(--text-secondary)',
-                      borderRadius: '50%',
-                      display: 'inline-block',
-                      animation: isPlaybackActive ? 'pulse 1s infinite' : 'none',
-                    }}
-                  ></span>
-                  {currentTrack
-                    ? currentTrack.file_type === 'video'
-                      ? t('player.videoStream')
-                      : t('player.syncedAudioStream')
-                    : t('player.liveMic')}
-                </p>
-              </div>
-            )}
-
             {!broadcastStatus?.is_broadcasting && (
               <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-                <svg width="56" height="56" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: 0.4, marginBottom: '1.5rem' }}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                  />
-                </svg>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    border: '2px solid currentColor',
+                    opacity: 0.35,
+                    margin: '0 auto 1.5rem',
+                  }}
+                ></div>
                 <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('player.noBroadcast')}</p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('player.waitForBroadcast')}</p>
               </div>

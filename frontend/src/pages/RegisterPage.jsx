@@ -4,6 +4,7 @@ import AuthToolbar from '../components/AuthToolbar'
 import PasswordField from '../components/PasswordField'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
+import { getApiErrorMessage } from '../utils/apiError'
 import loginLogo from '../assets/login-logo.svg'
 
 function RegisterPage() {
@@ -67,7 +68,7 @@ function RegisterPage() {
       })
       navigate('/login')
     } catch (err) {
-      setErrors({ submit: err.response?.data?.detail || t('auth.registerError') })
+      setErrors({ submit: getApiErrorMessage(err, t('auth.registerError')) })
     } finally {
       setLoading(false)
     }

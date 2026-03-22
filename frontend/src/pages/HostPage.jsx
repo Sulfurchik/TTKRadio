@@ -15,6 +15,7 @@ import {
   float32ToInt16Buffer,
   getAudioContextClass,
 } from '../utils/liveStream'
+import { getApiErrorMessage } from '../utils/apiError'
 import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
 
 function waitForVideoMetadata(video) {
@@ -322,7 +323,7 @@ function HostPage() {
     } catch (error) {
       setNotice({
         type: 'error',
-        text: error.response?.data?.detail || t('host.uploadError'),
+        text: getApiErrorMessage(error, t('host.uploadError')),
       })
     }
   }
@@ -364,7 +365,7 @@ function HostPage() {
       handleCancelRenameMedia()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: error.response?.data?.detail || t('host.renameFileError') })
+      setNotice({ type: 'error', text: getApiErrorMessage(error, t('host.renameFileError')) })
     }
   }
 
@@ -488,7 +489,7 @@ function HostPage() {
       await Promise.all([refreshStatus(), loadPlaylists()])
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: error.response?.data?.detail || t('host.startBroadcastError') })
+      setNotice({ type: 'error', text: getApiErrorMessage(error, t('host.startBroadcastError')) })
     }
   }
 
@@ -747,7 +748,7 @@ function HostPage() {
           setNotice(null)
         } catch (error) {
           await stopLiveMicBroadcast({ notifyServer: false })
-          setNotice({ type: 'error', text: error.response?.data?.detail || t('host.liveMicError') })
+          setNotice({ type: 'error', text: getApiErrorMessage(error, t('host.liveMicError')) })
         }
       }
 
@@ -835,7 +836,7 @@ function HostPage() {
         } catch (error) {
           setNotice({
             type: 'error',
-            text: error?.response?.data?.detail || t('host.saveMicRecordingError'),
+            text: getApiErrorMessage(error, t('host.saveMicRecordingError')),
           })
         }
       }

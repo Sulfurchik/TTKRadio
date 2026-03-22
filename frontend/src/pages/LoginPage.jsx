@@ -4,6 +4,7 @@ import AuthToolbar from '../components/AuthToolbar'
 import PasswordField from '../components/PasswordField'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
+import { getApiErrorMessage } from '../utils/apiError'
 import loginLogo from '../assets/login-logo.svg'
 
 function LoginPage() {
@@ -25,7 +26,7 @@ function LoginPage() {
       await login(formData.login.trim(), formData.password)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.detail || t('auth.loginError'))
+      setError(getApiErrorMessage(err, t('auth.loginError')))
     } finally {
       setLoading(false)
     }

@@ -3,6 +3,7 @@ import { adminService } from '../services'
 import { getLocale, useLanguage } from '../hooks/useLanguage'
 import Modal from '../components/Modal'
 import StatusBanner from '../components/StatusBanner'
+import { getApiErrorMessage } from '../utils/apiError'
 import { formatProjectDate } from '../utils/dateTime'
 
 
@@ -124,7 +125,7 @@ function AdminPage() {
       await loadUsers()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: error.response?.data?.detail || t('admin.deleteUserError') })
+      setNotice({ type: 'error', text: getApiErrorMessage(error, t('admin.deleteUserError')) })
     }
   }
 
@@ -142,7 +143,7 @@ function AdminPage() {
       await loadUsers()
       setNotice(null)
     } catch (error) {
-      setNotice({ type: 'error', text: error.response?.data?.detail || t('admin.saveError') })
+      setNotice({ type: 'error', text: getApiErrorMessage(error, t('admin.saveError')) })
     } finally {
       setLoading(false)
     }

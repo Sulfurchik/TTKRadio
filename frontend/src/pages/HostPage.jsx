@@ -16,7 +16,12 @@ import {
   getAudioContextClass,
 } from '../utils/liveStream'
 import { getApiErrorMessage } from '../utils/apiError'
-import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
+import {
+  buildRecordedAudioFile,
+  createAudioRecorder,
+  resolveRecordedAudioFormat,
+  stopMediaStream,
+} from '../utils/recording'
 
 function waitForVideoMetadata(video) {
   if (!video) {
@@ -805,7 +810,7 @@ function HostPage() {
         },
       })
       mediaStreamRef.current = stream
-      const { recorder, mimeType, extension } = createAudioRecorder(stream)
+      const { recorder, mimeType } = createAudioRecorder(stream)
       mediaRecorderRef.current = recorder
       audioChunksRef.current = []
 
@@ -817,14 +822,15 @@ function HostPage() {
 
       recorder.onstop = async () => {
         const chunkType = audioChunksRef.current[0]?.type
-        const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
+        const resolvedFormat = resolveRecordedAudioFormat(chunkType, recorder.mimeType, mimeType)
+        const blobType = chunkType || recorder.mimeType || mimeType || resolvedFormat.mimeType
         const blob = new Blob(audioChunksRef.current, { type: blobType })
         stopMediaStream(mediaStreamRef.current)
         mediaStreamRef.current = null
         if (blob.size === 0) {
           return
         }
-        const file = buildRecordedAudioFile(blob, 'microphone-recording', { mimeType: blobType, extension })
+        const file = buildRecordedAudioFile(blob, 'microphone-recording', resolvedFormat)
 
         try {
           const targetPlaylistId = resolveRecordingPlaylistId(targetMode)

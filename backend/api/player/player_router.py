@@ -3,7 +3,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.constants import VOICE_MESSAGE_EXTENSIONS
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models import Message, User, VoiceMessage
@@ -15,7 +14,7 @@ from app.schemas import (
     VoiceMessageResponse,
 )
 from app.services.broadcast import get_public_broadcast_state
-from app.services.media import get_media_duration, save_upload_file
+from app.services.media import AUDIO_CONTENT_TYPE_EXTENSION_MAP, get_media_duration, save_upload_file
 from app.services.serializers import serialize_broadcast_status, serialize_message, serialize_voice_message
 from app.services.streaming import manager
 from config.settings import settings
@@ -115,8 +114,9 @@ async def send_voice_message(
     relative_path, _, _ = await save_upload_file(
         file,
         folder_name="voice_messages",
-        allowed_extensions=set(VOICE_MESSAGE_EXTENSIONS),
+        allowed_extensions=set(settings.ALLOWED_AUDIO_FORMATS),
         max_size_bytes=settings.MAX_VOICE_MESSAGE_SIZE_MB * 1024 * 1024,
+        content_type_map=AUDIO_CONTENT_TYPE_EXTENSION_MAP,
     )
 
     voice_message = VoiceMessage(

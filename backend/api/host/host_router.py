@@ -48,9 +48,11 @@ from app.services.broadcast import (
     sync_broadcast_state,
 )
 from app.services.media import (
+    AUDIO_CONTENT_TYPE_EXTENSION_MAP,
+    VIDEO_CONTENT_TYPE_EXTENSION_MAP,
     delete_storage_file,
     get_media_duration,
-    get_file_extension,
+    resolve_upload_extension,
     save_upload_file,
     sanitize_display_name,
 )
@@ -128,12 +130,16 @@ async def upload_media(
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
-    extension = get_file_extension(file.filename)
-    if extension in settings.ALLOWED_AUDIO_FORMATS:
+    resolved_extension = resolve_upload_extension(
+        file,
+        allowed_extensions=set(settings.ALLOWED_AUDIO_FORMATS + settings.ALLOWED_VIDEO_FORMATS),
+        content_type_map=AUDIO_CONTENT_TYPE_EXTENSION_MAP | VIDEO_CONTENT_TYPE_EXTENSION_MAP,
+    )
+    if resolved_extension in settings.ALLOWED_AUDIO_FORMATS:
         folder_name = "audio"
         file_type = MediaType.AUDIO.value
         max_size = settings.MAX_AUDIO_SIZE_MB * 1024 * 1024
-    elif extension in settings.ALLOWED_VIDEO_FORMATS:
+    elif resolved_extension in settings.ALLOWED_VIDEO_FORMATS:
         folder_name = "video"
         file_type = MediaType.VIDEO.value
         max_size = settings.MAX_VIDEO_SIZE_MB * 1024 * 1024
@@ -145,6 +151,7 @@ async def upload_media(
         folder_name=folder_name,
         allowed_extensions=set(settings.ALLOWED_AUDIO_FORMATS + settings.ALLOWED_VIDEO_FORMATS),
         max_size_bytes=max_size,
+        content_type_map=AUDIO_CONTENT_TYPE_EXTENSION_MAP | VIDEO_CONTENT_TYPE_EXTENSION_MAP,
     )
 
     media = MediaLibrary(
@@ -644,6 +651,7 @@ async def record_audio(
         folder_name="audio",
         allowed_extensions=set(settings.ALLOWED_AUDIO_FORMATS),
         max_size_bytes=settings.MAX_AUDIO_SIZE_MB * 1024 * 1024,
+        content_type_map=AUDIO_CONTENT_TYPE_EXTENSION_MAP,
     )
 
     media = MediaLibrary(

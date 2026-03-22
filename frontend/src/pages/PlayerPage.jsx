@@ -10,7 +10,12 @@ import { formatPlaybackTime, getSyncedPositionSeconds, SYNC_TOLERANCE_SECONDS } 
 import { clampUnitValue } from '../utils/liveStream'
 import { getApiErrorMessage } from '../utils/apiError'
 import { getMediaDisplayName } from '../utils/media'
-import { buildRecordedAudioFile, createAudioRecorder, stopMediaStream } from '../utils/recording'
+import {
+  buildRecordedAudioFile,
+  createAudioRecorder,
+  resolveRecordedAudioFormat,
+  stopMediaStream,
+} from '../utils/recording'
 
 function waitForVideoMetadata(video) {
   if (!video) {
@@ -64,7 +69,6 @@ function PlayerPage() {
   const mediaRecorderRef = useRef(null)
   const mediaStreamRef = useRef(null)
   const audioChunksRef = useRef([])
-  const recordingFormatRef = useRef({ mimeType: 'audio/webm', extension: 'webm' })
   const videoRef = useRef(null)
   const videoContainerRef = useRef(null)
   const playerCardRef = useRef(null)
@@ -340,8 +344,7 @@ function PlayerPage() {
       })
       mediaStreamRef.current = stream
 
-      const { recorder, mimeType, extension } = createAudioRecorder(stream)
-      recordingFormatRef.current = { mimeType, extension }
+      const { recorder, mimeType } = createAudioRecorder(stream)
       mediaRecorderRef.current = recorder
       audioChunksRef.current = []
 
@@ -353,7 +356,8 @@ function PlayerPage() {
 
       recorder.onstop = () => {
         const chunkType = audioChunksRef.current[0]?.type
-        const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
+        const resolvedFormat = resolveRecordedAudioFormat(chunkType, recorder.mimeType, mimeType)
+        const blobType = chunkType || recorder.mimeType || mimeType || resolvedFormat.mimeType
         const blob = new Blob(audioChunksRef.current, { type: blobType })
         stopMediaStream(mediaStreamRef.current)
         mediaStreamRef.current = null
@@ -363,7 +367,7 @@ function PlayerPage() {
           return
         }
 
-        setVoiceFile(buildRecordedAudioFile(blob, 'voice-message', { mimeType: blobType, extension }))
+        setVoiceFile(buildRecordedAudioFile(blob, 'voice-message', resolvedFormat))
       }
 
       recorder.start()

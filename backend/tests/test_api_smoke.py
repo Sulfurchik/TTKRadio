@@ -34,6 +34,10 @@ def make_wav_file(filename: str = "sample.wav", duration_seconds: int = 20) -> t
     return filename, buffer.getvalue(), "audio/wav"
 
 
+def make_audio_stub_file(filename: str, content_type: str, content: bytes | None = None) -> tuple[str, bytes, str]:
+    return filename, content or b"transcom-audio-stub", content_type
+
+
 def build_multipart_body(fields: dict | None = None, files: dict | None = None) -> tuple[str, bytes]:
     fields = fields or {}
     files = files or {}
@@ -574,9 +578,9 @@ class BackendSmokeTest(unittest.TestCase):
 
         status, payload = self.request("GET", "/api/host/voice-messages", headers=host_headers)
         self.assertEqual(status, 200, payload)
-        self.assertEqual(len(payload), 1)
-        voice_message_id = payload[0]["id"]
-        self.assertEqual(payload[0]["status"], "new")
+        listener_voice_message = next(item for item in payload if item["user_login"] == "listener")
+        voice_message_id = listener_voice_message["id"]
+        self.assertEqual(listener_voice_message["status"], "new")
 
         status, payload = self.request(
             "PUT",
@@ -598,11 +602,12 @@ class BackendSmokeTest(unittest.TestCase):
 
         status, payload = self.request("GET", "/api/host/voice-messages", headers=host_headers)
         self.assertEqual(status, 200, payload)
-        self.assertEqual(len(payload), 0)
+        self.assertFalse(any(item["id"] == voice_message_id for item in payload))
 
         status, payload = self.request("GET", "/api/host/voice-messages/archive", headers=host_headers)
         self.assertEqual(status, 200, payload)
-        self.assertEqual(len(payload), 1)
+        archived_listener_voice = next(item for item in payload if item["id"] == voice_message_id)
+        self.assertEqual(archived_listener_voice["status"], "completed")
 
         status, payload = self.request("POST", "/api/auth/presence/offline", headers=host_headers)
         self.assertEqual(status, 200, payload)
@@ -634,6 +639,96 @@ class BackendSmokeTest(unittest.TestCase):
             json_body={"login": "listener", "password": "listener123!"},
         )
         self.assertEqual(status, 401, payload)
+
+    def test_audio_format_compatibility(self):
+        listener_payload = {
+            "login": "compatlistener",
+            "fio": "Иван Иванов",
+            "password": "compatlistener123!",
+            "password_confirm": "compatlistener123!",
+        }
+        host_payload = {
+            "login": "compathost",
+            "fio": "Петр Петров",
+            "password": "compathost123!",
+            "password_confirm": "compathost123!",
+        }
+
+        status, payload = self.request("POST", "/api/auth/register", json_body=listener_payload)
+        self.assertEqual(status, 201, payload)
+
+        status, payload = self.request("POST", "/api/auth/register", json_body=host_payload)
+        self.assertEqual(status, 201, payload)
+
+        admin_auth = self.login("admin", "SmokeAdmin123!")
+        admin_headers = self.auth_headers(admin_auth["access_token"])
+
+        status, roles_payload = self.request("GET", "/api/admin/roles", headers=admin_headers)
+        self.assertEqual(status, 200, roles_payload)
+        roles = {role["name"]: role["id"] for role in roles_payload}
+
+        status, users_payload = self.request("GET", "/api/admin/users", headers=admin_headers)
+        self.assertEqual(status, 200, users_payload)
+        users = {user["login"]: user for user in users_payload}
+
+        status, payload = self.request(
+            "POST",
+            f"/api/admin/users/{users['compathost']['id']}/roles",
+            headers=admin_headers,
+            json_body={"role_ids": [roles["Ведущий"]]},
+        )
+        self.assertEqual(status, 200, payload)
+
+        listener_auth = self.login("compatlistener", "compatlistener123!")
+        host_auth = self.login("compathost", "compathost123!")
+        listener_headers = self.auth_headers(listener_auth["access_token"])
+        host_headers = self.auth_headers(host_auth["access_token"])
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/media/upload",
+            headers=host_headers,
+            files={"file": ("mobile-recording.m4a", b"m4a-stub", "audio/mp4")},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["file_type"], "audio")
+        self.assertTrue(payload["storage_url"].endswith(".m4a"))
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/record",
+            headers=host_headers,
+            files={"file": make_audio_stub_file("browser-recording.webm", "audio/webm")},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["storage_url"].endswith(".webm"))
+
+        status, payload = self.request(
+            "POST",
+            "/api/player/voice",
+            headers=listener_headers,
+            files={"file": make_audio_stub_file("voice-message.ogg", "audio/ogg")},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["storage_url"].endswith(".ogg"))
+
+        status, payload = self.request(
+            "POST",
+            "/api/player/voice",
+            headers=listener_headers,
+            files={"file": make_audio_stub_file("voice-message", "audio/mp4")},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["storage_url"].endswith(".m4a"))
+
+        status, payload = self.request(
+            "POST",
+            "/api/player/voice",
+            headers=listener_headers,
+            files={"file": make_audio_stub_file("voice-message.bin", "application/octet-stream")},
+        )
+        self.assertEqual(status, 400, payload)
+        self.assertEqual(payload["detail"], "Неподдерживаемый формат")
 
     def test_single_public_broadcast_owner(self):
         first_host_payload = {

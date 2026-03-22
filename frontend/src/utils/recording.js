@@ -7,7 +7,7 @@ const AUDIO_FORMAT_CANDIDATES = [
   { mimeType: 'audio/mp4', extension: 'm4a' },
 ]
 
-function inferFormat(mimeType = '') {
+function detectFormat(mimeType = '') {
   const normalized = mimeType.toLowerCase()
   if (normalized.includes('ogg')) {
     return { mimeType: 'audio/ogg', extension: 'ogg' }
@@ -20,6 +20,20 @@ function inferFormat(mimeType = '') {
   }
   if (normalized.includes('mpeg') || normalized.includes('mp3')) {
     return { mimeType: 'audio/mpeg', extension: 'mp3' }
+  }
+  return null
+}
+
+export function inferFormat(mimeType = '') {
+  return detectFormat(mimeType) || { mimeType: 'audio/webm', extension: 'webm' }
+}
+
+export function resolveRecordedAudioFormat(...mimeCandidates) {
+  for (const mimeCandidate of mimeCandidates) {
+    const detectedFormat = detectFormat(mimeCandidate || '')
+    if (detectedFormat) {
+      return detectedFormat
+    }
   }
   return { mimeType: 'audio/webm', extension: 'webm' }
 }
@@ -36,7 +50,7 @@ export function createAudioRecorder(stream) {
     ? new MediaRecorder(stream, { mimeType: supportedFormat.mimeType })
     : new MediaRecorder(stream)
 
-  const resolvedFormat = inferFormat(recorder.mimeType || supportedFormat?.mimeType)
+  const resolvedFormat = resolveRecordedAudioFormat(recorder.mimeType, supportedFormat?.mimeType)
   return {
     recorder,
     mimeType: resolvedFormat.mimeType,
@@ -45,7 +59,7 @@ export function createAudioRecorder(stream) {
 }
 
 export function buildRecordedAudioFile(blob, baseName, format) {
-  const resolvedFormat = format?.extension ? format : inferFormat(blob.type)
+  const resolvedFormat = format?.extension ? format : resolveRecordedAudioFormat(blob.type)
   return new File([blob], `${baseName}.${resolvedFormat.extension}`, {
     type: blob.type || resolvedFormat.mimeType,
   })

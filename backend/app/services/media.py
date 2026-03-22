@@ -13,6 +13,23 @@ from config.settings import settings
 
 CHUNK_SIZE = 1024 * 1024
 INVALID_DISPLAY_NAME_CHARS = {'/', '\\', '\x00', '\n', '\r', '\t'}
+AUDIO_CONTENT_TYPE_EXTENSION_MAP = {
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/wav": "wav",
+    "audio/wave": "wav",
+    "audio/x-wav": "wav",
+    "audio/ogg": "ogg",
+    "audio/webm": "webm",
+    "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/m4a": "m4a",
+    "audio/aac": "m4a",
+}
+VIDEO_CONTENT_TYPE_EXTENSION_MAP = {
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+}
 
 
 def storage_root() -> Path:
@@ -40,6 +57,30 @@ def get_file_extension(filename: str | None) -> str:
     return filename.rsplit(".", maxsplit=1)[-1].lower()
 
 
+def normalize_content_type(content_type: str | None) -> str:
+    if not content_type:
+        return ""
+    return content_type.split(";", maxsplit=1)[0].strip().lower()
+
+
+def resolve_upload_extension(
+    upload_file: UploadFile,
+    *,
+    allowed_extensions: set[str],
+    content_type_map: dict[str, str] | None = None,
+) -> str:
+    filename_extension = get_file_extension(upload_file.filename)
+    if filename_extension in allowed_extensions:
+        return filename_extension
+
+    normalized_content_type = normalize_content_type(upload_file.content_type)
+    inferred_extension = (content_type_map or {}).get(normalized_content_type, "")
+    if inferred_extension in allowed_extensions:
+        return inferred_extension
+
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неподдерживаемый формат")
+
+
 def sanitize_display_name(filename: str | None, *, fallback: str = "file") -> str:
     cleaned = (filename or "").strip()
     if not cleaned:
@@ -61,13 +102,16 @@ async def save_upload_file(
     folder_name: str,
     allowed_extensions: set[str],
     max_size_bytes: int,
+    content_type_map: dict[str, str] | None = None,
 ) -> tuple[str, int, str]:
     if not upload_file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Файл не выбран")
 
-    extension = get_file_extension(upload_file.filename)
-    if extension not in allowed_extensions:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неподдерживаемый формат")
+    extension = resolve_upload_extension(
+        upload_file,
+        allowed_extensions=allowed_extensions,
+        content_type_map=content_type_map,
+    )
 
     target_dir = storage_root() / folder_name
     target_dir.mkdir(parents=True, exist_ok=True)

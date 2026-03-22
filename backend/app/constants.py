@@ -26,4 +26,3 @@ class BroadcastMode(StrEnum):
 
 DEFAULT_ROLES = tuple(role.value for role in RoleName)
 MESSAGE_STATUSES = tuple(status.value for status in MessageStatus)
-VOICE_MESSAGE_EXTENSIONS = ("mp3", "wav", "ogg", "webm")

@@ -346,6 +346,7 @@ configure_environment() {
   upsert_env "$env_file" "DATABASE_URL" "$database_url"
   upsert_env "$env_file" "STORAGE_PATH" "$INSTALL_DIR/backend/storage"
   upsert_env "$env_file" "CORS_ORIGINS" "$cors_origins"
+  upsert_env "$env_file" "ALLOWED_AUDIO_FORMATS" "[\"mp3\",\"wav\",\"ogg\",\"webm\",\"m4a\"]"
   upsert_env "$env_file" "DEFAULT_ADMIN_LOGIN" "$ADMIN_LOGIN"
   upsert_env "$env_file" "DEFAULT_ADMIN_PASSWORD" "$ADMIN_PASSWORD"
   upsert_env "$env_file" "DEFAULT_ADMIN_FIO" "Администратор Системы"

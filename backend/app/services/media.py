@@ -12,6 +12,7 @@ from config.settings import settings
 
 
 CHUNK_SIZE = 1024 * 1024
+INVALID_DISPLAY_NAME_CHARS = {'/', '\\', '\x00', '\n', '\r', '\t'}
 
 
 def storage_root() -> Path:
@@ -37,6 +38,21 @@ def get_file_extension(filename: str | None) -> str:
     if not filename or "." not in filename:
         return ""
     return filename.rsplit(".", maxsplit=1)[-1].lower()
+
+
+def sanitize_display_name(filename: str | None, *, fallback: str = "file") -> str:
+    cleaned = (filename or "").strip()
+    if not cleaned:
+        return fallback
+
+    cleaned = "".join(char for char in cleaned if char not in INVALID_DISPLAY_NAME_CHARS)
+    cleaned = " ".join(cleaned.split())
+    cleaned = cleaned.lstrip(".")
+
+    if not cleaned:
+        return fallback
+
+    return cleaned[:255]
 
 
 async def save_upload_file(

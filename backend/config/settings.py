@@ -1,7 +1,8 @@
+import json
 from pathlib import Path
 from typing import List
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,7 +12,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 class Settings(BaseSettings):
     APP_NAME: str = "TransCom Stream"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     DATABASE_URL: str = f"sqlite+aiosqlite:///{(BACKEND_DIR / 'database.db').as_posix()}"
 
@@ -70,6 +71,25 @@ class Settings(BaseSettings):
                 return False
         return value
 
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def normalize_cors_origins(cls, value):
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if not cleaned:
+                return []
+            if cleaned.startswith("["):
+                try:
+                    parsed = json.loads(cleaned)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            return [item.strip() for item in cleaned.split(",") if item.strip()]
+        return value
+
     @field_validator("STORAGE_PATH", mode="before")
     @classmethod
     def normalize_storage_path(cls, value: str) -> str:
@@ -79,6 +99,35 @@ class Settings(BaseSettings):
         if not storage_path.is_absolute():
             storage_path = (BACKEND_DIR / storage_path).resolve()
         return str(storage_path)
+
+    @model_validator(mode="after")
+    def validate_production_security(self):
+        insecure_secret_keys = {
+            "your-secret-key-change-in-production",
+            "your-secret-key-min-32-characters-long",
+            "changeme",
+            "secret",
+        }
+        weak_admin_passwords = {
+            "admin123",
+            "admin",
+            "password",
+            "changeme",
+            "change-me-now",
+        }
+
+        if not self.DEBUG:
+            if len(self.SECRET_KEY.strip()) < 32 or self.SECRET_KEY.strip().lower() in insecure_secret_keys:
+                raise ValueError("SECRET_KEY must be strong and at least 32 characters long when DEBUG is disabled")
+            if (
+                len(self.DEFAULT_ADMIN_PASSWORD.strip()) < 10
+                or self.DEFAULT_ADMIN_PASSWORD.strip().lower() in weak_admin_passwords
+            ):
+                raise ValueError(
+                    "DEFAULT_ADMIN_PASSWORD must be strong and not use the default placeholder when DEBUG is disabled"
+                )
+
+        return self
 
 
 settings = Settings()

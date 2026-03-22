@@ -101,7 +101,6 @@ async def create_default_admin() -> None:
             await session.flush()
         else:
             admin_user.fio = settings.DEFAULT_ADMIN_FIO
-            admin_user.password_hash = hash_password(settings.DEFAULT_ADMIN_PASSWORD)
             admin_user.is_deleted = False
             admin_user.updated_at = datetime.utcnow()
 

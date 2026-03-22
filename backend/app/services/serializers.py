@@ -133,11 +133,13 @@ def serialize_broadcast_status(state, playlist_items_data: list[dict]) -> Broadc
     current_media = serialize_media(state.current_media) if state and state.current_media else None
     playlist = state.playlist if state else None
     server_time = as_utc(datetime.utcnow()) if state else None
+    started_at = as_utc(state.started_at) if state else None
+    paused_at = as_utc(state.paused_at) if state else None
     position_seconds = 0.0
 
-    if state and state.is_broadcasting and state.started_at:
-        reference_time = state.paused_at if state.is_paused and state.paused_at else server_time
-        position_seconds = max((reference_time - state.started_at).total_seconds(), 0.0)
+    if state and state.is_broadcasting and started_at:
+        reference_time = paused_at if state.is_paused and paused_at else server_time
+        position_seconds = max((reference_time - started_at).total_seconds(), 0.0)
         if current_media and current_media.duration > 0:
             position_seconds = min(position_seconds, current_media.duration)
 
@@ -153,7 +155,7 @@ def serialize_broadcast_status(state, playlist_items_data: list[dict]) -> Broadc
         host_id=state.host_id if state else None,
         volume=state.volume if state else 1.0,
         mode=state.source_type if state else "playlist",
-        started_at=as_utc(state.started_at) if state else None,
+        started_at=started_at,
         position_seconds=position_seconds,
         server_time=server_time,
         server_timestamp_ms=server_time.timestamp() * 1000 if server_time else 0.0,

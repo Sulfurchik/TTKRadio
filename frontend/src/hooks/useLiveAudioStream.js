@@ -30,6 +30,19 @@ export function useLiveAudioStream({
   const [isConnected, setIsConnected] = useState(false)
   const [isStreamActive, setIsStreamActive] = useState(Boolean(initiallyActive))
 
+  const stopQueuedSources = () => {
+    sourceNodesRef.current.forEach(sourceNode => {
+      try {
+        sourceNode.stop()
+      } catch (error) {
+        void error
+      }
+      sourceNode.disconnect()
+    })
+    sourceNodesRef.current.clear()
+    nextStartTimeRef.current = 0
+  }
+
   const ensureAudioContext = async () => {
     if (!audioContextRef.current) {
       const AudioContextClass = getAudioContextClass()
@@ -73,6 +86,9 @@ export function useLiveAudioStream({
     }
 
     const safeLeadTime = 0.08
+    if (nextStartTimeRef.current - audioContext.currentTime > 1.5) {
+      nextStartTimeRef.current = audioContext.currentTime + safeLeadTime
+    }
     const startedAt = Math.max(audioContext.currentTime + safeLeadTime, nextStartTimeRef.current)
     sourceNode.start(startedAt)
     nextStartTimeRef.current = startedAt + audioBuffer.duration
@@ -101,16 +117,7 @@ export function useLiveAudioStream({
       websocketRef.current = null
       setIsConnected(false)
       setIsStreamActive(false)
-      nextStartTimeRef.current = 0
-      sourceNodesRef.current.forEach(sourceNode => {
-        try {
-          sourceNode.stop()
-        } catch (error) {
-          void error
-        }
-        sourceNode.disconnect()
-      })
-      sourceNodesRef.current.clear()
+      stopQueuedSources()
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => {})
         audioContextRef.current = null
@@ -122,6 +129,10 @@ export function useLiveAudioStream({
     shouldReconnectRef.current = true
 
     const connect = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
       const socket = new WebSocket(buildWebSocketUrl(websocketUrl))
       socket.binaryType = 'arraybuffer'
       websocketRef.current = socket
@@ -129,6 +140,9 @@ export function useLiveAudioStream({
       socket.onopen = async () => {
         setIsConnected(true)
         await ensureAudioContext().catch(() => {})
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current)
+        }
         socket.send('ping')
         pingIntervalRef.current = window.setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
@@ -146,11 +160,11 @@ export function useLiveAudioStream({
               channels: payload.channels || 1,
             }
             setIsStreamActive(true)
-            nextStartTimeRef.current = 0
+            stopQueuedSources()
           }
           if (payload?.type === 'live_audio_stop') {
             setIsStreamActive(false)
-            nextStartTimeRef.current = 0
+            stopQueuedSources()
           }
           return
         }
@@ -167,6 +181,7 @@ export function useLiveAudioStream({
         setIsConnected(false)
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current)
+          pingIntervalRef.current = null
         }
         if (shouldReconnectRef.current) {
           reconnectTimeoutRef.current = window.setTimeout(connect, 1500)
@@ -184,24 +199,17 @@ export function useLiveAudioStream({
       shouldReconnectRef.current = false
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current)
+        pingIntervalRef.current = null
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
       }
       websocketRef.current?.close()
       websocketRef.current = null
       setIsConnected(false)
       setIsStreamActive(false)
-      nextStartTimeRef.current = 0
-      sourceNodesRef.current.forEach(sourceNode => {
-        try {
-          sourceNode.stop()
-        } catch (error) {
-          void error
-        }
-        sourceNode.disconnect()
-      })
-      sourceNodesRef.current.clear()
+      stopQueuedSources()
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => {})
         audioContextRef.current = null
@@ -238,7 +246,7 @@ export function useLiveAudioStream({
       if (audioContextRef.current?.state === 'running') {
         await audioContextRef.current.suspend()
       }
-      nextStartTimeRef.current = 0
+      stopQueuedSources()
     },
   }
 }

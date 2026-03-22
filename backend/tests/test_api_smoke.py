@@ -70,8 +70,9 @@ class BackendSmokeTest(unittest.TestCase):
             {
                 "DATABASE_URL": f"sqlite+aiosqlite:///{(TEST_ROOT / 'test.db').as_posix()}",
                 "STORAGE_PATH": str(TEST_ROOT / "storage"),
-                "SECRET_KEY": "test-secret-key-1234567890",
+                "SECRET_KEY": "test-secret-key-1234567890-1234567890",
                 "DEBUG": "False",
+                "DEFAULT_ADMIN_PASSWORD": "SmokeAdmin123!",
             }
         )
 
@@ -194,7 +195,7 @@ class BackendSmokeTest(unittest.TestCase):
         status, payload = self.request("POST", "/api/auth/register", json_body=host_payload)
         self.assertEqual(status, 201, payload)
 
-        admin_auth = self.login("admin", "admin123")
+        admin_auth = self.login("admin", "SmokeAdmin123!")
         admin_headers = self.auth_headers(admin_auth["access_token"])
 
         status, roles_payload = self.request("GET", "/api/admin/roles", headers=admin_headers)
@@ -594,7 +595,7 @@ class BackendSmokeTest(unittest.TestCase):
         status, payload = self.request("POST", "/api/auth/register", json_body=second_host_payload)
         self.assertEqual(status, 201, payload)
 
-        admin_auth = self.login("admin", "admin123")
+        admin_auth = self.login("admin", "SmokeAdmin123!")
         admin_headers = self.auth_headers(admin_auth["access_token"])
 
         status, roles_payload = self.request("GET", "/api/admin/roles", headers=admin_headers)

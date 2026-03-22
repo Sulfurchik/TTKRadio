@@ -51,6 +51,7 @@ from app.services.media import (
     get_media_duration,
     get_file_extension,
     save_upload_file,
+    sanitize_display_name,
 )
 from app.services.serializers import (
     serialize_broadcast_status,
@@ -147,7 +148,7 @@ async def upload_media(
     media = MediaLibrary(
         user_id=current_user.id,
         file_path=relative_path,
-        original_name=file.filename,
+        original_name=sanitize_display_name(file.filename, fallback="Файл"),
         file_type=file_type,
         file_size=file_size,
         duration=get_media_duration(relative_path) if file_type == MediaType.AUDIO.value else 0.0,
@@ -181,7 +182,7 @@ async def update_media(
     db: AsyncSession = Depends(get_db),
 ):
     media = await get_host_media(db, current_user.id, media_id)
-    media.original_name = request.original_name
+    media.original_name = sanitize_display_name(request.original_name, fallback="Файл")
     media.updated_at = datetime.utcnow()
     await db.commit()
 
@@ -209,7 +210,7 @@ async def create_playlist(
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
-    playlist = Playlist(user_id=current_user.id, name=request.name)
+    playlist = Playlist(user_id=current_user.id, name=sanitize_display_name(request.name, fallback="Плейлист"))
     db.add(playlist)
     await db.commit()
     return await build_playlist_response(db, playlist)
@@ -640,7 +641,7 @@ async def record_audio(
     media = MediaLibrary(
         user_id=current_user.id,
         file_path=relative_path,
-        original_name=file.filename or "Запись с микрофона",
+        original_name=sanitize_display_name(file.filename, fallback="Запись с микрофона"),
         file_type=MediaType.AUDIO.value,
         file_size=file_size,
         duration=get_media_duration(relative_path),

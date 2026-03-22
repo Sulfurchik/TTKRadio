@@ -51,9 +51,7 @@ async def listen_stream(websocket: WebSocket):
     await manager.connect_listener(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
-            if data:
-                await websocket.send_json({"status": "connected"})
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect_listener(websocket)
     except Exception:

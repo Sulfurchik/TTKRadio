@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections import defaultdict
 
@@ -68,32 +69,29 @@ class ConnectionManager:
             elif event_type == "live_audio_stop":
                 self.live_audio_metadata = None
 
-        stale_connections = []
-        for connection in list(self.listener_connections):
-            try:
-                await connection.send_text(payload)
-            except Exception:
-                stale_connections.append(connection)
+        listeners = list(self.listener_connections)
+        results = await asyncio.gather(
+            *(connection.send_text(payload) for connection in listeners),
+            return_exceptions=True,
+        )
 
-        for connection in stale_connections:
-            self.disconnect_listener(connection)
+        for connection, result in zip(listeners, results):
+            if isinstance(result, Exception):
+                self.disconnect_listener(connection)
 
     async def broadcast_binary(self, host_id: str, chunk: bytes) -> None:
         if self.live_audio_host_id != host_id:
             return
 
-        stale_connections = []
-        for connection in list(self.listener_connections):
-            try:
-                await connection.send_bytes(chunk)
-            except Exception:
-                stale_connections.append(("listener", connection))
+        listeners = list(self.listener_connections)
+        results = await asyncio.gather(
+            *(connection.send_bytes(chunk) for connection in listeners),
+            return_exceptions=True,
+        )
 
-        for connection_type, connection in stale_connections:
-            if connection_type == "listener":
+        for connection, result in zip(listeners, results):
+            if isinstance(result, Exception):
                 self.disconnect_listener(connection)
-            else:
-                self.disconnect_host(connection, host_id)
 
 
 manager = ConnectionManager()

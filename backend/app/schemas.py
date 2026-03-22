@@ -9,6 +9,7 @@ from app.constants import BroadcastMode, MESSAGE_STATUSES
 
 LOGIN_PATTERN = re.compile(r"^[A-Za-z]+$")
 FIO_PATTERN = re.compile(r"^[А-Яа-яЁё\s-]+$")
+INVALID_NAME_PATTERN = re.compile(r"[/\\\\\x00\r\n\t]")
 
 
 def _validate_ascii_password(value: str) -> str:
@@ -17,6 +18,17 @@ def _validate_ascii_password(value: str) -> str:
     if any(ord(char) < 33 or ord(char) > 126 for char in value):
         raise ValueError("Пароль может содержать только латинские буквы, цифры и символы")
     return value
+
+
+def _validate_safe_display_name(value: str, *, error_message: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        raise ValueError(error_message)
+    if INVALID_NAME_PATTERN.search(cleaned):
+        raise ValueError("Название содержит недопустимые символы")
+    if cleaned.startswith("."):
+        raise ValueError("Название не должно начинаться с точки")
+    return cleaned
 
 
 class BaseSchema(BaseModel):
@@ -230,10 +242,7 @@ class PlaylistCreateRequest(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("Название плейлиста не может быть пустым")
-        return cleaned
+        return _validate_safe_display_name(value, error_message="Название плейлиста не может быть пустым")
 
 
 class PlaylistAddItemRequest(BaseModel):
@@ -247,10 +256,7 @@ class MediaUpdateRequest(BaseModel):
     @field_validator("original_name")
     @classmethod
     def validate_original_name(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("Название файла не может быть пустым")
-        return cleaned
+        return _validate_safe_display_name(value, error_message="Название файла не может быть пустым")
 
 
 class PlaylistReorderRequest(BaseModel):

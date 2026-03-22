@@ -75,6 +75,7 @@ export function useBroadcastPlayback({
   const userPausedRef = useRef(false)
   const requestIdRef = useRef(0)
   const volumeAnimationFrameRef = useRef(null)
+  const pollTimeoutRef = useRef(null)
 
   const [broadcastStatus, setBroadcastStatus] = useState(null)
   const [currentTrack, setCurrentTrack] = useState(null)
@@ -243,13 +244,31 @@ export function useBroadcastPlayback({
   }
 
   useEffect(() => {
-    loadStatusRef.current?.()
+    const clearPollTimeout = () => {
+      if (pollTimeoutRef.current !== null) {
+        clearTimeout(pollTimeoutRef.current)
+        pollTimeoutRef.current = null
+      }
+    }
 
-    const intervalId = setInterval(() => {
+    const scheduleNextPoll = () => {
+      clearPollTimeout()
+      const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+      const nextDelay = isHidden ? Math.max(pollIntervalMs * 4, 5000) : pollIntervalMs
+      pollTimeoutRef.current = window.setTimeout(async () => {
+        await loadStatusRef.current?.()
+        scheduleNextPoll()
+      }, nextDelay)
+    }
+
+    const startPolling = async () => {
       loadStatusRef.current?.()
-    }, pollIntervalMs)
+      scheduleNextPoll()
+    }
 
-    return () => clearInterval(intervalId)
+    startPolling()
+
+    return () => clearPollTimeout()
   }, [pollIntervalMs])
 
   useEffect(() => {

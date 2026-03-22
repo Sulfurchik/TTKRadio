@@ -268,6 +268,16 @@ ensure_secret_key() {
 }
 
 
+ensure_admin_password() {
+  if [[ "$ADMIN_PASSWORD" != "admin123" ]]; then
+    return
+  fi
+
+  ADMIN_PASSWORD="$(openssl rand -base64 24 | tr -d '\n' | tr '/+' 'AB' | cut -c1-20)"
+  warn "Default admin password was replaced with a generated secure password: ${ADMIN_PASSWORD}"
+}
+
+
 upsert_env() {
   local env_file="$1"
   local key="$2"
@@ -535,6 +545,7 @@ main() {
   parse_args "$@"
   require_root
   check_os
+  ensure_admin_password
   install_system_packages
   ensure_nodejs
   ensure_service_user

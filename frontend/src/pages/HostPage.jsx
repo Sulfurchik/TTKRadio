@@ -109,6 +109,11 @@ function HostPage() {
     () => playlists.find(playlist => playlist.id === selectedPlaylistId) || null,
     [playlists, selectedPlaylistId],
   )
+  const activePlaylist = useMemo(
+    () => playlists.find(playlist => playlist.is_active) || null,
+    [playlists],
+  )
+  const [recordingMode, setRecordingMode] = useState('library')
 
   useEffect(() => {
     loadInitialData()
@@ -558,6 +563,47 @@ function HostPage() {
     await loadMessages(nextArchiveMode)
   }
 
+  const finalizeRecordedMedia = async (savedMedia, targetMode) => {
+    if (!savedMedia?.id) {
+      return
+    }
+
+    if (targetMode === 'playlist') {
+      if (!selectedPlaylist) {
+        setNotice({ type: 'warning', text: t('host.recordToPlaylistRequiresSelection') })
+        return
+      }
+
+      await hostService.addItemToPlaylist(selectedPlaylist.id, savedMedia.id)
+      await loadPlaylists()
+      setNotice({ type: 'success', text: t('host.recordingAddedToPlaylist') })
+      return
+    }
+
+    if (targetMode === 'air') {
+      const targetPlaylist = selectedPlaylist || activePlaylist
+      if (!targetPlaylist) {
+        setNotice({ type: 'warning', text: t('host.recordToAirRequiresPlaylist') })
+        return
+      }
+
+      await hostService.addItemToPlaylist(targetPlaylist.id, savedMedia.id)
+
+      if (broadcastStatus?.is_broadcasting && broadcastStatus?.playlist_id === targetPlaylist.id) {
+        await hostService.setCurrentMedia(savedMedia.id)
+      } else {
+        await hostService.startBroadcast(targetPlaylist.id)
+        await hostService.setCurrentMedia(savedMedia.id)
+      }
+
+      await Promise.all([loadPlaylists(), refreshStatus()])
+      setNotice({ type: 'success', text: t('host.recordingAddedToAir') })
+      return
+    }
+
+    setNotice({ type: 'success', text: t('host.recordingSavedToLibrary') })
+  }
+
   const handleBroadcastVolumeChange = async (event) => {
     const nextVolume = parseFloat(event.target.value)
     setBroadcastVolume(nextVolume)
@@ -742,8 +788,9 @@ function HostPage() {
     })
   }
 
-  const startRecording = async () => {
+  const startRecording = async (targetMode = recordingMode) => {
     try {
+      setRecordingMode(targetMode)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
       const { recorder, mimeType, extension } = createAudioRecorder(stream)
@@ -768,9 +815,9 @@ function HostPage() {
         const file = buildRecordedAudioFile(blob, 'microphone-recording', { mimeType: blobType, extension })
 
         try {
-          await hostService.recordAudio(file)
+          const savedMedia = await hostService.recordAudio(file)
           await loadMedia()
-          setNotice(null)
+          await finalizeRecordedMedia(savedMedia, targetMode)
         } catch (error) {
           setNotice({ type: 'error', text: t('host.saveMicRecordingError') })
         }
@@ -799,6 +846,8 @@ function HostPage() {
   const isLive = Boolean(broadcastStatus?.is_broadcasting)
   const isCurrentVideo = currentTrack?.file_type === 'video'
   const isBroadcastPaused = Boolean(broadcastStatus?.is_paused)
+  const canRecordToPlaylist = Boolean(selectedPlaylist)
+  const canRecordToAir = Boolean(selectedPlaylist || activePlaylist)
 
   return (
     <div className="container page-shell">
@@ -1121,12 +1170,43 @@ function HostPage() {
           <div className="surface-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header" style={{ marginBottom: '1.5rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}>{t('host.mediaLibrary')}</h2>
-              <button
-                className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'}`}
-                onClick={isRecording ? stopRecording : startRecording}
-              >
-                {isRecording ? t('player.stop') : t('host.recordFromMic')}
-              </button>
+              <div className="surface-card__actions" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+                {!isRecording && (
+                  <>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${recordingMode === 'library' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setRecordingMode('library')}
+                    >
+                      {t('host.recordTargetLibrary')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${recordingMode === 'playlist' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setRecordingMode('playlist')}
+                      disabled={!canRecordToPlaylist}
+                      title={!canRecordToPlaylist ? t('host.recordToPlaylistRequiresSelection') : t('host.recordTargetPlaylist')}
+                    >
+                      {t('host.recordTargetPlaylist')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${recordingMode === 'air' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setRecordingMode('air')}
+                      disabled={!canRecordToAir}
+                      title={!canRecordToAir ? t('host.recordToAirRequiresPlaylist') : t('host.recordTargetAir')}
+                    >
+                      {t('host.recordTargetAir')}
+                    </button>
+                  </>
+                )}
+                <button
+                  className={`btn ${isRecording ? 'btn-danger' : 'btn-primary'}`}
+                  onClick={isRecording ? stopRecording : () => startRecording(recordingMode)}
+                >
+                  {isRecording ? t('player.stop') : t('host.recordFromMic')}
+                </button>
+              </div>
             </div>
 
             <FileUpload

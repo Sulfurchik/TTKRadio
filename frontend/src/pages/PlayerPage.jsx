@@ -344,38 +344,19 @@ function PlayerPage() {
         }
       }
 
-      recorder.onerror = () => {
+      recorder.onstop = () => {
+        const chunkType = audioChunksRef.current[0]?.type
+        const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
+        const blob = new Blob(audioChunksRef.current, { type: blobType })
         stopMediaStream(mediaStreamRef.current)
         mediaStreamRef.current = null
-        audioChunksRef.current = []
-        mediaRecorderRef.current = null
-        setIsRecording(false)
-        setVoiceFile(null)
-        setNotice({ type: 'error', text: t('player.voiceSendError') })
-      }
 
-      recorder.onstop = () => {
-        try {
-          const chunkType = audioChunksRef.current[0]?.type
-          const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
-          const blob = new Blob(audioChunksRef.current, { type: blobType })
-
-          if (blob.size === 0) {
-            setVoiceFile(null)
-            return
-          }
-
-          setVoiceFile(buildRecordedAudioFile(blob, 'voice-message', { mimeType: blobType, extension }))
-        } catch (error) {
+        if (blob.size === 0) {
           setVoiceFile(null)
-          setNotice({ type: 'error', text: t('player.voiceSendError') })
-        } finally {
-          stopMediaStream(mediaStreamRef.current)
-          mediaStreamRef.current = null
-          audioChunksRef.current = []
-          mediaRecorderRef.current = null
-          setIsRecording(false)
+          return
         }
+
+        setVoiceFile(buildRecordedAudioFile(blob, 'voice-message', { mimeType: blobType, extension }))
       }
 
       recorder.start()
@@ -392,17 +373,9 @@ function PlayerPage() {
       return
     }
 
-    try {
-      mediaRecorderRef.current.stop()
-    } catch (error) {
-      stopMediaStream(mediaStreamRef.current)
-      mediaStreamRef.current = null
-      audioChunksRef.current = []
-      mediaRecorderRef.current = null
-      setIsRecording(false)
-      setVoiceFile(null)
-      setNotice({ type: 'error', text: t('player.voiceSendError') })
-    }
+    mediaRecorderRef.current.stop()
+    mediaRecorderRef.current = null
+    setIsRecording(false)
   }
 
   const sendVoiceMessage = async () => {

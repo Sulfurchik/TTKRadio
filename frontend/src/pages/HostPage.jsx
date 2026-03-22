@@ -823,39 +823,23 @@ function HostPage() {
         }
       }
 
-      recorder.onerror = () => {
+      recorder.onstop = async () => {
+        const chunkType = audioChunksRef.current[0]?.type
+        const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
+        const blob = new Blob(audioChunksRef.current, { type: blobType })
         stopMediaStream(mediaStreamRef.current)
         mediaStreamRef.current = null
-        audioChunksRef.current = []
-        mediaRecorderRef.current = null
-        setIsRecording(false)
-        setNotice({ type: 'error', text: t('host.saveMicRecordingError') })
-      }
+        if (blob.size === 0) {
+          return
+        }
+        const file = buildRecordedAudioFile(blob, 'microphone-recording', { mimeType: blobType, extension })
 
-      recorder.onstop = async () => {
         try {
-          const chunkType = audioChunksRef.current[0]?.type
-          const blobType = recorder.mimeType || chunkType || mimeType || 'audio/webm'
-          const blob = new Blob(audioChunksRef.current, { type: blobType })
-          if (blob.size === 0) {
-            setNotice({ type: 'error', text: t('host.saveMicRecordingError') })
-            return
-          }
-          const file = buildRecordedAudioFile(blob, 'microphone-recording', { mimeType: blobType, extension })
           const savedMedia = await hostService.recordAudio(file)
           await loadMedia()
           await finalizeRecordedMedia(savedMedia, targetMode)
         } catch (error) {
-          setNotice({
-            type: 'error',
-            text: error?.response?.data?.detail || t('host.saveMicRecordingError'),
-          })
-        } finally {
-          stopMediaStream(mediaStreamRef.current)
-          mediaStreamRef.current = null
-          audioChunksRef.current = []
-          mediaRecorderRef.current = null
-          setIsRecording(false)
+          setNotice({ type: 'error', text: t('host.saveMicRecordingError') })
         }
       }
 
@@ -872,16 +856,9 @@ function HostPage() {
       return
     }
 
-    try {
-      mediaRecorderRef.current.stop()
-    } catch (error) {
-      stopMediaStream(mediaStreamRef.current)
-      mediaStreamRef.current = null
-      audioChunksRef.current = []
-      mediaRecorderRef.current = null
-      setIsRecording(false)
-      setNotice({ type: 'error', text: t('host.saveMicRecordingError') })
-    }
+    mediaRecorderRef.current.stop()
+    mediaRecorderRef.current = null
+    setIsRecording(false)
   }
 
   const currentTrackId = currentTrack?.id

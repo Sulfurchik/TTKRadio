@@ -730,6 +730,35 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertEqual(status, 400, payload)
         self.assertEqual(payload["detail"], "Неподдерживаемый формат")
 
+        status, payload = self.request(
+            "POST",
+            "/api/host/playlists",
+            headers=host_headers,
+            json_body={"name": "Mobile Air"},
+        )
+        self.assertEqual(status, 201, payload)
+        playlist_id = payload["id"]
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/record",
+            headers=host_headers,
+            form_fields={"target_mode": "air", "playlist_id": playlist_id, "duration_seconds": 1},
+            files={"file": make_audio_stub_file("air-mobile-recording.webm", "audio/webm")},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertAlmostEqual(payload["duration"], 1.0, delta=0.05)
+
+        time.sleep(1.2)
+        status, payload = self.request(
+            "GET",
+            "/api/host/broadcast/status",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_broadcasting"])
+        self.assertIsNone(payload["current_media"])
+
     def test_single_public_broadcast_owner(self):
         first_host_payload = {
             "login": "hostalpha",

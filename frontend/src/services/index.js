@@ -279,6 +279,9 @@ export const hostService = {
     if (options.playlistId != null) {
       formData.append('playlist_id', String(options.playlistId))
     }
+    if (Number.isFinite(options.durationSeconds) && options.durationSeconds > 0) {
+      formData.append('duration_seconds', String(options.durationSeconds))
+    }
     const response = await api.post('/host/record', formData)
     return response.data
   }

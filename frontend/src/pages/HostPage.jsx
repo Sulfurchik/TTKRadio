@@ -19,6 +19,7 @@ import { getApiErrorMessage } from '../utils/apiError'
 import {
   buildRecordedAudioFile,
   createAudioRecorder,
+  getBlobMediaDuration,
   resolveRecordedAudioFormat,
   stopMediaStream,
 } from '../utils/recording'
@@ -831,12 +832,14 @@ function HostPage() {
           return
         }
         const file = buildRecordedAudioFile(blob, 'microphone-recording', resolvedFormat)
+        const durationSeconds = await getBlobMediaDuration(blob)
 
         try {
           const targetPlaylistId = resolveRecordingPlaylistId(targetMode)
           await hostService.recordAudio(file, {
             targetMode,
             playlistId: targetPlaylistId,
+            durationSeconds,
           })
           await handleRecordedMediaSuccess(targetMode)
         } catch (error) {

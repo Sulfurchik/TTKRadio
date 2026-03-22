@@ -639,6 +639,7 @@ async def record_audio(
     file: UploadFile = File(...),
     target_mode: str = Form("library"),
     playlist_id: Optional[int] = Form(None),
+    duration_seconds: Optional[float] = Form(None),
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
@@ -660,7 +661,7 @@ async def record_audio(
         original_name=sanitize_display_name(file.filename, fallback="Запись с микрофона"),
         file_type=MediaType.AUDIO.value,
         file_size=file_size,
-        duration=get_media_duration(relative_path),
+        duration=duration_seconds if duration_seconds and duration_seconds > 0 else get_media_duration(relative_path),
         is_visible_in_library=normalized_mode == "library",
         is_one_shot_in_air=normalized_mode == "air",
     )

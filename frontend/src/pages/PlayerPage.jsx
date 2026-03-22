@@ -535,14 +535,14 @@ function PlayerPage() {
                     boxShadow: '0 0 0 10px rgba(255,255,255,0.08)',
                   }}
                 >
-                  <div
-                    style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.92)',
-                    }}
-                  ></div>
+                  <svg width="34" height="34" fill="none" stroke="rgba(255,255,255,0.92)" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                    />
+                  </svg>
                 </div>
               </div>
             )}

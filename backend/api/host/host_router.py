@@ -31,6 +31,7 @@ from app.services.broadcast import (
     cleanup_media_references,
     cleanup_playlist_references,
     finish_current_media,
+    get_active_playlist_for_host,
     get_or_create_broadcast_state,
     get_playlist_items,
     insert_playlist_item,
@@ -115,6 +116,7 @@ async def get_media_library(
     result = await db.execute(
         select(MediaLibrary)
         .where(MediaLibrary.user_id == current_user.id)
+        .where(MediaLibrary.is_visible_in_library.is_(True))
         .order_by(MediaLibrary.created_at.desc(), MediaLibrary.id.desc())
     )
     return [serialize_media(media) for media in result.scalars().all()]
@@ -628,9 +630,15 @@ async def update_voice_message_status(
 @router.post("/record", response_model=MediaResponse)
 async def record_audio(
     file: UploadFile = File(...),
+    target_mode: str = Form("library"),
+    playlist_id: Optional[int] = Form(None),
     current_user: User = Depends(require_host),
     db: AsyncSession = Depends(get_db),
 ):
+    normalized_mode = (target_mode or "library").strip().lower()
+    if normalized_mode not in {"library", "playlist", "air"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неизвестный режим сохранения записи")
+
     relative_path, file_size, _ = await save_upload_file(
         file,
         folder_name="audio",
@@ -645,8 +653,33 @@ async def record_audio(
         file_type=MediaType.AUDIO.value,
         file_size=file_size,
         duration=get_media_duration(relative_path),
+        is_visible_in_library=normalized_mode == "library",
     )
     db.add(media)
+    await db.flush()
+
+    target_playlist = None
+    if normalized_mode == "playlist":
+        if playlist_id is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Сначала выберите плейлист")
+        target_playlist = await get_host_playlist(db, current_user.id, playlist_id)
+        await insert_playlist_item(db, target_playlist.id, media.id)
+    elif normalized_mode == "air":
+        target_playlist = (
+            await get_host_playlist(db, current_user.id, playlist_id)
+            if playlist_id is not None
+            else await get_active_playlist_for_host(db, current_user.id)
+        )
+        if target_playlist is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Сначала выберите или активируйте плейлист, чтобы отправить запись в эфир",
+            )
+        await insert_playlist_item(db, target_playlist.id, media.id)
+        await activate_playlist_for_host(db, current_user.id, target_playlist.id)
+        await start_playlist_broadcast(db, current_user.id, target_playlist.id)
+        await set_current_media(db, current_user.id, media.id)
+
     await db.commit()
 
     result = await db.execute(select(MediaLibrary).where(MediaLibrary.id == media.id))

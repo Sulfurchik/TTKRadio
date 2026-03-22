@@ -97,6 +97,7 @@ class MediaLibrary(Base):
     file_type = Column(String(10), nullable=False)  # audio, video
     file_size = Column(Integer, nullable=False)  # в байтах
     duration = Column(Float, default=0)  # длительность в секундах
+    is_visible_in_library = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship('User', back_populates='media_files')

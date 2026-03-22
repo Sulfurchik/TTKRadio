@@ -321,13 +321,25 @@ class BackendSmokeTest(unittest.TestCase):
 
         status, payload = self.request(
             "POST",
-            f"/api/host/playlists/{playlist_id}/items",
+            "/api/host/record",
             headers=host_headers,
-            json_body={"media_id": recorded_media_id},
+            form_fields={"target_mode": "playlist", "playlist_id": playlist_id},
+            files={"file": ("playlist-recording.wav", wav_bytes, wav_content_type)},
         )
         self.assertEqual(status, 200, payload)
-        self.assertEqual(len(payload["items"]), 2)
-        second_item_id = next(item["id"] for item in payload["items"] if item["media_id"] == recorded_media_id)
+        playlist_recorded_media_id = payload["id"]
+
+        status, payload = self.request("GET", "/api/host/media", headers=host_headers)
+        self.assertEqual(status, 200, payload)
+        media_ids = [item["id"] for item in payload]
+        self.assertIn(recorded_media_id, media_ids)
+        self.assertNotIn(playlist_recorded_media_id, media_ids)
+
+        status, payload = self.request("GET", "/api/host/playlists", headers=host_headers)
+        self.assertEqual(status, 200, payload)
+        playlist_payload = next(item for item in payload if item["id"] == playlist_id)
+        self.assertEqual(len(playlist_payload["items"]), 2)
+        second_item_id = next(item["id"] for item in playlist_payload["items"] if item["media_id"] == playlist_recorded_media_id)
 
         status, payload = self.request(
             "POST",
@@ -466,7 +478,7 @@ class BackendSmokeTest(unittest.TestCase):
         )
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload["items"]), 2)
-        self.assertNotIn(recorded_media_id, [item["media_id"] for item in payload["items"]])
+        self.assertNotIn(playlist_recorded_media_id, [item["media_id"] for item in payload["items"]])
 
         status, payload = self.request(
             "POST",
@@ -506,6 +518,25 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertEqual(status, 200, payload)
         self.assertFalse(payload["is_broadcasting"])
         self.assertIsNone(payload["current_media"])
+
+        status, payload = self.request(
+            "POST",
+            "/api/host/record",
+            headers=host_headers,
+            form_fields={"target_mode": "air", "playlist_id": playlist_id},
+            files={"file": ("air-recording.wav", wav_bytes, wav_content_type)},
+        )
+        self.assertEqual(status, 200, payload)
+        air_recorded_media_id = payload["id"]
+
+        status, payload = self.request(
+            "GET",
+            "/api/host/broadcast/status",
+            headers=host_headers,
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["is_broadcasting"])
+        self.assertEqual(payload["current_media"]["id"], air_recorded_media_id)
 
         status, payload = self.request("GET", "/api/host/messages", headers=host_headers)
         self.assertEqual(status, 200, payload)

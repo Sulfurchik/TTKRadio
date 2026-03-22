@@ -272,9 +272,15 @@ export const hostService = {
   },
 
   // Запись
-  recordAudio: async (file) => {
+  recordAudio: async (file, options = {}) => {
     const formData = new FormData()
     formData.append('file', file)
+    if (options.targetMode) {
+      formData.append('target_mode', options.targetMode)
+    }
+    if (options.playlistId != null) {
+      formData.append('playlist_id', String(options.playlistId))
+    }
     const response = await api.post('/host/record', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })

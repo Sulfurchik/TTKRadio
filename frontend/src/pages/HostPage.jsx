@@ -585,40 +585,25 @@ function HostPage() {
     await loadMessages(nextArchiveMode)
   }
 
-  const finalizeRecordedMedia = async (savedMedia, targetMode) => {
-    if (!savedMedia?.id) {
-      return
+  const resolveRecordingPlaylistId = (targetMode) => {
+    if (targetMode === 'playlist') {
+      return selectedPlaylist?.id ?? null
     }
+    if (targetMode === 'air') {
+      return (selectedPlaylist || activePlaylist)?.id ?? null
+    }
+    return null
+  }
+
+  const handleRecordedMediaSuccess = async (targetMode) => {
+    await Promise.all([loadMedia(), loadPlaylists(), refreshStatus()])
 
     if (targetMode === 'playlist') {
-      if (!selectedPlaylist) {
-        setNotice({ type: 'warning', text: t('host.recordToPlaylistRequiresSelection') })
-        return
-      }
-
-      await hostService.addItemToPlaylist(selectedPlaylist.id, savedMedia.id)
-      await loadPlaylists()
       setNotice({ type: 'success', text: t('host.recordingAddedToPlaylist') })
       return
     }
 
     if (targetMode === 'air') {
-      const targetPlaylist = selectedPlaylist || activePlaylist
-      if (!targetPlaylist) {
-        setNotice({ type: 'warning', text: t('host.recordToAirRequiresPlaylist') })
-        return
-      }
-
-      await hostService.addItemToPlaylist(targetPlaylist.id, savedMedia.id)
-
-      if (broadcastStatus?.is_broadcasting && broadcastStatus?.playlist_id === targetPlaylist.id) {
-        await hostService.setCurrentMedia(savedMedia.id)
-      } else {
-        await hostService.startBroadcast(targetPlaylist.id)
-        await hostService.setCurrentMedia(savedMedia.id)
-      }
-
-      await Promise.all([loadPlaylists(), refreshStatus()])
       setNotice({ type: 'success', text: t('host.recordingAddedToAir') })
       return
     }
@@ -835,11 +820,17 @@ function HostPage() {
         const file = buildRecordedAudioFile(blob, 'microphone-recording', { mimeType: blobType, extension })
 
         try {
-          const savedMedia = await hostService.recordAudio(file)
-          await loadMedia()
-          await finalizeRecordedMedia(savedMedia, targetMode)
+          const targetPlaylistId = resolveRecordingPlaylistId(targetMode)
+          await hostService.recordAudio(file, {
+            targetMode,
+            playlistId: targetPlaylistId,
+          })
+          await handleRecordedMediaSuccess(targetMode)
         } catch (error) {
-          setNotice({ type: 'error', text: t('host.saveMicRecordingError') })
+          setNotice({
+            type: 'error',
+            text: error?.response?.data?.detail || t('host.saveMicRecordingError'),
+          })
         }
       }
 

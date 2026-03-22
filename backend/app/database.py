@@ -35,6 +35,7 @@ async def init_db():
         await conn.run_sync(ensure_broadcast_state_columns)
         await conn.run_sync(ensure_user_columns)
         await conn.run_sync(ensure_voice_message_columns)
+        await conn.run_sync(ensure_media_library_columns)
 
 
 def ensure_broadcast_state_columns(sync_conn):
@@ -77,6 +78,16 @@ def ensure_voice_message_columns(sync_conn):
         )
         sync_conn.execute(
             text("UPDATE voice_messages SET updated_at = created_at WHERE updated_at IS NULL")
+        )
+
+
+def ensure_media_library_columns(sync_conn):
+    inspector = inspect(sync_conn)
+    column_names = {column["name"] for column in inspector.get_columns("media_library")}
+
+    if "is_visible_in_library" not in column_names:
+        sync_conn.execute(
+            text("ALTER TABLE media_library ADD COLUMN is_visible_in_library BOOLEAN NOT NULL DEFAULT 1")
         )
 
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthToolbar from '../components/AuthToolbar'
+import PasswordField from '../components/PasswordField'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
 import loginLogo from '../assets/login-logo.svg'
@@ -13,6 +14,7 @@ function LoginPage() {
   const [formData, setFormData] = useState({ login: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -71,18 +73,17 @@ function LoginPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">{t('auth.password')}</label>
-            <input
-              type="password"
-              className="form-input"
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
-              placeholder={t('auth.passwordPlaceholder')}
-              required
-              autoComplete="current-password"
-            />
-          </div>
+          <PasswordField
+            label={t('auth.password')}
+            value={formData.password}
+            onChange={e => setFormData({ ...formData, password: e.target.value })}
+            placeholder={t('auth.passwordPlaceholder')}
+            required
+            autoComplete="current-password"
+            visible={isPasswordVisible}
+            onToggleVisibility={() => setIsPasswordVisible(prev => !prev)}
+            toggleLabel={isPasswordVisible ? t('auth.hidePassword') : t('auth.showPassword')}
+          />
 
           {error && (
             <div style={{

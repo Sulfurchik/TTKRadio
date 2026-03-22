@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthToolbar from '../components/AuthToolbar'
+import PasswordField from '../components/PasswordField'
 import { useLanguage } from '../hooks/useLanguage'
 import { useAuthStore } from '../store/authStore'
 import loginLogo from '../assets/login-logo.svg'
@@ -18,6 +19,8 @@ function RegisterPage() {
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false)
 
   const validate = () => {
     const normalizedLogin = formData.login.trim()
@@ -133,33 +136,31 @@ function RegisterPage() {
             </p>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">{t('auth.password')}</label>
-            <input
-              type="password"
-              className="form-input"
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
-              placeholder={t('auth.passwordHint')}
-              required
-              autoComplete="new-password"
-            />
-            {errors.password && <p className="form-error">{errors.password}</p>}
-          </div>
+          <PasswordField
+            label={t('auth.password')}
+            value={formData.password}
+            onChange={e => setFormData({ ...formData, password: e.target.value })}
+            placeholder={t('auth.passwordHint')}
+            required
+            autoComplete="new-password"
+            visible={isPasswordVisible}
+            onToggleVisibility={() => setIsPasswordVisible(prev => !prev)}
+            toggleLabel={isPasswordVisible ? t('auth.hidePassword') : t('auth.showPassword')}
+          />
+          {errors.password && <p className="form-error">{errors.password}</p>}
 
-          <div className="form-group">
-            <label className="form-label">{t('auth.confirmPassword')}</label>
-            <input
-              type="password"
-              className="form-input"
-              value={formData.password_confirm}
-              onChange={e => setFormData({ ...formData, password_confirm: e.target.value })}
-              placeholder={t('auth.confirmPasswordPlaceholder')}
-              required
-              autoComplete="new-password"
-            />
-            {errors.password_confirm && <p className="form-error">{errors.password_confirm}</p>}
-          </div>
+          <PasswordField
+            label={t('auth.confirmPassword')}
+            value={formData.password_confirm}
+            onChange={e => setFormData({ ...formData, password_confirm: e.target.value })}
+            placeholder={t('auth.confirmPasswordPlaceholder')}
+            required
+            autoComplete="new-password"
+            visible={isConfirmPasswordVisible}
+            onToggleVisibility={() => setIsConfirmPasswordVisible(prev => !prev)}
+            toggleLabel={isConfirmPasswordVisible ? t('auth.hidePassword') : t('auth.showPassword')}
+          />
+          {errors.password_confirm && <p className="form-error">{errors.password_confirm}</p>}
 
           {errors.submit && (
             <div style={{

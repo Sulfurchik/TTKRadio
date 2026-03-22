@@ -55,6 +55,8 @@ const translations = {
       passwordRule: 'Пароль может содержать только латинские буквы, цифры и символы',
       passwordMinRule: 'Пароль должен быть не менее 4 символов',
       passwordMismatch: 'Пароли не совпадают',
+      showPassword: 'Показать пароль',
+      hidePassword: 'Скрыть пароль',
     },
     player: {
       title: 'Плеер',
@@ -310,6 +312,8 @@ const translations = {
       passwordRule: 'Password may contain Latin letters, digits and symbols only',
       passwordMinRule: 'Password must be at least 4 characters long',
       passwordMismatch: 'Passwords do not match',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
     },
     player: {
       title: 'Player',

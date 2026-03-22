@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { getLocale, useLanguage } from '../hooks/useLanguage'
+import { formatProjectDateTime } from '../utils/dateTime'
 
 function MessagesList({ messages, onStatusChange, showArchive = false }) {
   const language = useLanguage(state => state.language)
@@ -100,17 +101,11 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            {msg.message_type === 'voice' ? (
-              <span className="status-badge status-new">
-                {t('common.voiceMessage')}
-              </span>
-            ) : (
-              <span className={`status-badge ${getStatusClass(msg.status)}`}>
-                {getStatusText(msg.status)}
-              </span>
-            )}
+            <span className={`status-badge ${getStatusClass(msg.status)}`}>
+              {getStatusText(msg.status)}
+            </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {new Date(msg.created_at).toLocaleString(locale)}
+              {formatProjectDateTime(msg.created_at, locale)}
             </span>
           </div>
           {msg.message_type === 'voice' ? (
@@ -137,7 +132,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
           ) : (
             <p style={{ marginBottom: '0.75rem', color: 'var(--page-text)' }}>{msg.text}</p>
           )}
-          {!showArchive && msg.message_type !== 'voice' && msg.status !== 'completed' && typeof onStatusChange === 'function' && (
+          {!showArchive && msg.status !== 'completed' && typeof onStatusChange === 'function' && (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {msg.status === 'new' && (
                 <button 

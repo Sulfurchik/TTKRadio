@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.schemas import (
     BroadcastStatusResponse,
@@ -13,6 +13,14 @@ from app.schemas import (
 from app.services.media import build_storage_url
 
 
+def as_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def serialize_role(role) -> RoleResponse:
     return RoleResponse(id=role.id, name=role.name)
 
@@ -24,8 +32,8 @@ def serialize_user(user) -> UserResponse:
         login=user.login,
         fio=user.fio,
         roles=[serialize_role(role) for role in user.roles],
-        created_at=user.created_at,
-        updated_at=user.updated_at,
+        created_at=as_utc(user.created_at),
+        updated_at=as_utc(user.updated_at),
         is_deleted=user.is_deleted,
         is_online=is_online,
     )
@@ -38,7 +46,7 @@ def serialize_media(media) -> MediaResponse:
         file_type=media.file_type,
         file_size=media.file_size,
         duration=media.duration,
-        created_at=media.created_at,
+        created_at=as_utc(media.created_at),
         file_path=media.file_path,
         storage_url=build_storage_url(media.file_path),
     )
@@ -53,8 +61,8 @@ def serialize_message(message) -> MessageResponse:
         host_id=message.host_id,
         text=message.text,
         status=message.status,
-        created_at=message.created_at,
-        updated_at=message.updated_at,
+        created_at=as_utc(message.created_at),
+        updated_at=as_utc(message.updated_at),
     )
 
 
@@ -69,8 +77,8 @@ def serialize_voice_message(voice_message) -> VoiceMessageResponse:
         storage_url=build_storage_url(voice_message.file_path),
         duration=voice_message.duration,
         status=voice_message.status,
-        created_at=voice_message.created_at,
-        updated_at=voice_message.updated_at,
+        created_at=as_utc(voice_message.created_at),
+        updated_at=as_utc(voice_message.updated_at),
     )
 
 
@@ -85,7 +93,7 @@ def serialize_playlist_item(*, item_id: int, media, order: int, added_at) -> Pla
         order=order,
         file_path=media.file_path,
         storage_url=build_storage_url(media.file_path),
-        added_at=added_at,
+        added_at=as_utc(added_at),
     )
 
 
@@ -106,8 +114,8 @@ def serialize_playlist(playlist, playlist_items_data: list[dict]) -> PlaylistRes
         is_shuffle=playlist.is_shuffle,
         is_active=playlist.is_active,
         items=items,
-        created_at=playlist.created_at,
-        updated_at=playlist.updated_at,
+        created_at=as_utc(playlist.created_at),
+        updated_at=as_utc(playlist.updated_at),
         total_duration=sum(media_item.duration for media_item in items),
     )
 
@@ -124,7 +132,7 @@ def serialize_broadcast_status(state, playlist_items_data: list[dict]) -> Broadc
     ]
     current_media = serialize_media(state.current_media) if state and state.current_media else None
     playlist = state.playlist if state else None
-    server_time = datetime.utcnow() if state else None
+    server_time = as_utc(datetime.utcnow()) if state else None
     position_seconds = 0.0
 
     if state and state.is_broadcasting and state.started_at:
@@ -145,7 +153,7 @@ def serialize_broadcast_status(state, playlist_items_data: list[dict]) -> Broadc
         host_id=state.host_id if state else None,
         volume=state.volume if state else 1.0,
         mode=state.source_type if state else "playlist",
-        started_at=state.started_at if state else None,
+        started_at=as_utc(state.started_at) if state else None,
         position_seconds=position_seconds,
         server_time=server_time,
         server_timestamp_ms=server_time.timestamp() * 1000 if server_time else 0.0,

@@ -3,6 +3,7 @@ import { adminService } from '../services'
 import { getLocale, useLanguage } from '../hooks/useLanguage'
 import Modal from '../components/Modal'
 import StatusBanner from '../components/StatusBanner'
+import { formatProjectDate } from '../utils/dateTime'
 
 
 const ROLE_KEY_BY_NAME = {
@@ -353,7 +354,7 @@ function AdminPage() {
                       </div>
                     </td>
                   <td style={{ fontSize: '0.85rem', color: 'var(--ttk-gray-light)' }}>
-                    {new Date(user.created_at).toLocaleDateString(locale)}
+                    {formatProjectDate(user.created_at, locale)}
                   </td>
                   <td>
                     {user.is_deleted ? (
@@ -412,7 +413,7 @@ function AdminPage() {
                   <div>
                     <span className="admin-user-card__label">{t('admin.registrationDate')}</span>
                     <div className="admin-user-card__value">
-                      {new Date(user.created_at).toLocaleDateString(locale)}
+                      {formatProjectDate(user.created_at, locale)}
                     </div>
                   </div>
                 </div>

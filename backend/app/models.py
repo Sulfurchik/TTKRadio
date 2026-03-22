@@ -32,6 +32,7 @@ class User(Base):
     fio = Column(String(150), nullable=False)
     password_hash = Column(String(255), nullable=False)
     is_deleted = Column(Boolean, default=False)  # Soft delete
+    last_seen_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -78,7 +79,9 @@ class VoiceMessage(Base):
     host_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     file_path = Column(String(255), nullable=False)
     duration = Column(Float, default=0)
+    status = Column(String(20), default='new')
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship('User', foreign_keys=[user_id], back_populates='voice_messages')
     host = relationship('User', foreign_keys=[host_id], back_populates='host_voice_messages')

@@ -16,6 +16,16 @@ export const authService = {
     return response.data
   },
 
+  updatePresence: async () => {
+    const response = await api.post('/auth/presence')
+    return response.data
+  },
+
+  markOffline: async () => {
+    const response = await api.post('/auth/presence/offline')
+    return response.data
+  },
+
   logout: () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -245,6 +255,16 @@ export const hostService = {
 
   getVoiceMessages: async () => {
     const response = await api.get('/host/voice-messages')
+    return response.data
+  },
+
+  getArchivedVoiceMessages: async () => {
+    const response = await api.get('/host/voice-messages/archive')
+    return response.data
+  },
+
+  updateVoiceMessageStatus: async (voiceMessageId, status) => {
+    const response = await api.put(`/host/voice-messages/${voiceMessageId}/status`, { status })
     return response.data
   },
 

@@ -11,6 +11,28 @@ const ROLE_KEY_BY_NAME = {
   Администратор: 'admin',
 }
 
+function ActionIconButton({ title, onClick, children }) {
+  return (
+    <button
+      type="button"
+      className="btn btn-outline btn-sm"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={{
+        width: '36px',
+        height: '36px',
+        padding: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 function AdminPage() {
   const language = useLanguage(state => state.language)
   const t = useLanguage(state => state.t)
@@ -161,19 +183,30 @@ function AdminPage() {
     })
   }
 
-  const getUserStateLabel = (user) => (user.is_deleted ? t('admin.blocked') : t('admin.active'))
+  const getUserStateLabel = (user) => {
+    if (user.is_deleted) {
+      return t('admin.blocked')
+    }
+    return user.is_online ? t('admin.active') : t('admin.inactive')
+  }
 
   const renderUserActions = (user) => (
     <div className="table-actions" style={{ flexWrap: 'wrap', gap: '0.375rem' }}>
-      <button type="button" className="btn btn-outline btn-sm" onClick={() => openEditModal(user)}>
-        {t('admin.edit')}
-      </button>
-      <button type="button" className="btn btn-outline btn-sm" onClick={() => openPasswordModal(user)}>
-        {t('admin.changePassword')}
-      </button>
-      <button type="button" className="btn btn-outline btn-sm" onClick={() => openRolesModal(user)}>
-        {t('admin.assignRoles')}
-      </button>
+      <ActionIconButton title={t('admin.edit')} onClick={() => openEditModal(user)}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.586 3.586a2 2 0 112.828 2.828L11.5 14.328 8 15l.672-3.5 7.914-7.914z" />
+        </svg>
+      </ActionIconButton>
+      <ActionIconButton title={t('admin.changePassword')} onClick={() => openPasswordModal(user)}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a5 5 0 00-9.584 2H4a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-1m4-10l-3 3m0 0l-3-3m3 3V4" />
+        </svg>
+      </ActionIconButton>
+      <ActionIconButton title={t('admin.assignRoles')} onClick={() => openRolesModal(user)}>
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h8a2 2 0 012 2v2h2a2 2 0 012 2v8a2 2 0 01-2 2h-6l-3 2v-2H6a2 2 0 01-2-2V6zm4 3h4m-4 4h4m5 1l1.5 1.5L18 12" />
+        </svg>
+      </ActionIconButton>
       <button
         type="button"
         className="btn btn-danger btn-sm"
@@ -327,9 +360,13 @@ function AdminPage() {
                       <span className="status-badge status-completed" style={{ background: '#ffebee', color: '#c62828' }}>
                         {t('admin.blocked')}
                       </span>
-                    ) : (
+                    ) : user.is_online ? (
                       <span className="status-badge status-new" style={{ background: '#e8f5e9', color: '#2e7d32' }}>
                         {t('admin.active')}
+                      </span>
+                    ) : (
+                      <span className="status-badge status-in_progress" style={{ background: '#eceff1', color: '#546e7a' }}>
+                        {t('admin.inactive')}
                       </span>
                     )}
                   </td>
@@ -356,7 +393,7 @@ function AdminPage() {
                     <div className="admin-user-card__login" style={{ fontWeight: 600, color: 'var(--page-text)' }}>{user.login}</div>
                     <div className="admin-user-card__fio" style={{ color: 'var(--page-text)' }}>{user.fio}</div>
                   </div>
-                  <span className={`status-badge ${user.is_deleted ? 'status-completed' : 'status-new'}`}>
+                  <span className={`status-badge ${user.is_deleted ? 'status-completed' : user.is_online ? 'status-new' : 'status-in_progress'}`}>
                     {getUserStateLabel(user)}
                   </span>
                 </div>

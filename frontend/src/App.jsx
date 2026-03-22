@@ -9,12 +9,45 @@ import HostPage from './pages/HostPage'
 import Navbar from './components/Navbar'
 
 function App() {
-  const { isAuthenticated, user, isLoading, checkAuth } = useAuthStore()
+  const { isAuthenticated, user, isLoading, checkAuth, syncPresence } = useAuthStore()
 
   useEffect(() => {
     checkAuth()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return undefined
+    }
+
+    syncPresence()
+    const intervalId = window.setInterval(() => {
+      syncPresence()
+    }, 15000)
+
+    const markOfflineOnHide = () => {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        return
+      }
+
+      fetch('/api/auth/presence/offline', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        keepalive: true,
+      }).catch(() => {})
+    }
+
+    window.addEventListener('pagehide', markOfflineOnHide)
+
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('pagehide', markOfflineOnHide)
+    }
+  }, [isAuthenticated, syncPresence])
 
   const hasRole = (roles) => {
     if (!user) return false

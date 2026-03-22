@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +32,10 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный логин или пароль",
         )
+
+    user.last_seen_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(user)
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return LoginResponse(access_token=access_token, user=serialize_user(user))
@@ -76,5 +82,30 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    current_user.last_seen_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(current_user)
+    return serialize_user(current_user)
+
+
+@router.post("/presence", response_model=UserResponse)
+async def update_presence(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_user.last_seen_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(current_user)
+    return serialize_user(current_user)
+
+
+@router.post("/presence/offline", response_model=UserResponse)
+async def mark_offline(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_user.last_seen_at = None
+    await db.commit()
+    await db.refresh(current_user)
     return serialize_user(current_user)

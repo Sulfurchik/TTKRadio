@@ -1621,6 +1621,10 @@ select {
   height: 0.72rem;
   flex-shrink: 0;
   border-radius: 999px;
+  background: #9aa0a6;
+}
+
+.recording-dot--live {
   background: var(--ttk-red);
   animation: recordingPulse 1.3s ease-in-out infinite;
 }
@@ -1883,10 +1887,6 @@ select {
 
   .admin-user-card__actions .table-actions > * {
     flex: 1 1 calc(50% - 0.25rem);
-  }
-
-  .admin-user-card__actions .table-actions button[title='Удалить пользователя'] {
-    flex: 0 0 2.25rem;
   }
 
   .table-actions {

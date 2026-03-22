@@ -28,8 +28,8 @@ function Navbar() {
     return roleKey ? t(`roles.${roleKey}`) : roleName
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 

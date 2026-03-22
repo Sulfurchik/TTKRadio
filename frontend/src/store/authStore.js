@@ -18,6 +18,7 @@ export const useAuthStore = create((set) => ({
       isAuthenticated: true,
       isLoading: false
     })
+    authService.updatePresence().catch(() => {})
     return data
   },
 
@@ -26,7 +27,12 @@ export const useAuthStore = create((set) => ({
     return data
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await authService.markOffline()
+    } catch (error) {
+      void error
+    }
     authService.logout()
     set({
       user: null,
@@ -75,5 +81,15 @@ export const useAuthStore = create((set) => ({
   updateUser: (user) => {
     localStorage.setItem('user', JSON.stringify(user))
     set({ user })
+  },
+
+  syncPresence: async () => {
+    try {
+      const user = await authService.updatePresence()
+      localStorage.setItem('user', JSON.stringify(user))
+      set({ user })
+    } catch (error) {
+      void error
+    }
   }
 }))

@@ -142,7 +142,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
               {msg.status === 'new' && (
                 <button 
                   className="btn btn-primary btn-sm"
-                  onClick={() => onStatusChange(msg.id, 'in_progress')}
+                  onClick={() => onStatusChange(msg, 'in_progress')}
                 >
                   {t('messageStatus.takeInProgress')}
                 </button>
@@ -150,7 +150,7 @@ function MessagesList({ messages, onStatusChange, showArchive = false }) {
               {msg.status === 'in_progress' && (
                 <button 
                   className="btn btn-success btn-sm"
-                  onClick={() => onStatusChange(msg.id, 'completed')}
+                  onClick={() => onStatusChange(msg, 'completed')}
                 >
                   {t('messageStatus.finish')}
                 </button>

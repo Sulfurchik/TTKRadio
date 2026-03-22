@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.schemas import (
     BroadcastStatusResponse,
@@ -18,6 +18,7 @@ def serialize_role(role) -> RoleResponse:
 
 
 def serialize_user(user) -> UserResponse:
+    is_online = bool(user.last_seen_at and user.last_seen_at >= datetime.utcnow() - timedelta(seconds=35))
     return UserResponse(
         id=user.id,
         login=user.login,
@@ -26,6 +27,7 @@ def serialize_user(user) -> UserResponse:
         created_at=user.created_at,
         updated_at=user.updated_at,
         is_deleted=user.is_deleted,
+        is_online=is_online,
     )
 
 
@@ -66,7 +68,9 @@ def serialize_voice_message(voice_message) -> VoiceMessageResponse:
         file_path=voice_message.file_path,
         storage_url=build_storage_url(voice_message.file_path),
         duration=voice_message.duration,
+        status=voice_message.status,
         created_at=voice_message.created_at,
+        updated_at=voice_message.updated_at,
     )
 
 

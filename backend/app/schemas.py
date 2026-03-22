@@ -40,6 +40,7 @@ class UserResponse(BaseSchema):
     created_at: datetime
     updated_at: datetime
     is_deleted: bool
+    is_online: bool = False
 
 
 class LoginRequest(BaseModel):
@@ -193,7 +194,9 @@ class VoiceMessageResponse(BaseSchema):
     file_path: str
     storage_url: str
     duration: float
+    status: str
     created_at: datetime
+    updated_at: datetime
 
 
 class PlaylistItemResponse(BaseSchema):

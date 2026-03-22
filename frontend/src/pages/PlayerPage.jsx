@@ -239,7 +239,7 @@ function PlayerPage() {
       ])
       setMessages(buildCommunicationItems(
         textMessages.filter(msg => msg.status !== 'completed'),
-        voiceMessages,
+        voiceMessages.filter(msg => msg.status !== 'completed'),
       ))
     } catch (error) {
       console.error('Messages error:', error)
@@ -421,7 +421,7 @@ function PlayerPage() {
                     border: '1px solid var(--player-live-badge-border)',
                   }}
                 >
-                  <span className="recording-dot"></span>
+                  <span className="recording-dot recording-dot--live"></span>
                   <span style={{ fontWeight: 700, color: 'var(--ttk-red)', fontSize: '0.85rem', letterSpacing: '0.5px' }}>
                     {t('player.live').toUpperCase()}
                   </span>
@@ -441,7 +441,7 @@ function PlayerPage() {
               )}
               {liveMicHintVisible && (
                 <div className="glass-badge glass-badge--warn">
-                  <span className="recording-dot"></span>
+                  <span className="recording-dot recording-dot--live"></span>
                   <span style={{ fontWeight: 700, color: 'var(--page-text)', fontSize: '0.82rem' }}>
                     {t('player.liveMic')}
                   </span>
@@ -480,9 +480,15 @@ function PlayerPage() {
               <div
                 className="player-cover"
                 style={{
-                  animation: isAudioPlaying ? 'pulse-glow 2s ease-in-out infinite' : 'playerFloat 5s ease-in-out infinite',
+                  animation: isPlaybackActive ? 'pulse-glow 2s ease-in-out infinite' : 'none',
                   opacity: isBuffering ? 0.7 : 1,
                   transition: 'opacity 0.3s ease',
+                  background: isPlaybackActive
+                    ? 'linear-gradient(135deg, var(--ttk-red), var(--ttk-red-light))'
+                    : 'linear-gradient(135deg, #889096, #5f676d)',
+                  boxShadow: isPlaybackActive
+                    ? '0 28px 50px rgba(229, 39, 19, 0.2)'
+                    : '0 18px 34px rgba(43, 49, 54, 0.2)',
                 }}
               >
                 {isBuffering && canPlay && (
@@ -681,7 +687,7 @@ function PlayerPage() {
 
               {isRecording && (
                 <div className="recording-indicator" style={{ marginTop: '1rem' }}>
-                  <span className="recording-dot"></span>{t('player.recording')}
+                  <span className="recording-dot recording-dot--live"></span>{t('player.recording')}
                 </div>
               )}
             </form>
@@ -711,7 +717,7 @@ function PlayerPage() {
       <footer className="page-footer">
         <p>© 2026 PixelCast, Все права защищены</p>
         <p>Не является коммерческим продуктом</p>
-        <p>Платформа для управления потоковым вещанием, сделано командой Pixel Minds</p>
+        <p>Платформа для управления потоковым вещанием для ТТК, сделано командой Pixel Minds</p>
       </footer>
     </div>
   )

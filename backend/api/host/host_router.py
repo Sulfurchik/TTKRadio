@@ -567,11 +567,61 @@ async def get_voice_messages(
     result = await db.execute(
         select(VoiceMessage)
         .where((VoiceMessage.host_id == current_user.id) | (VoiceMessage.host_id.is_(None)))
+        .where(VoiceMessage.status != MessageStatus.COMPLETED.value)
         .options(selectinload(VoiceMessage.user))
         .order_by(VoiceMessage.created_at.desc(), VoiceMessage.id.desc())
         .limit(100)
     )
     return [serialize_voice_message(message) for message in result.scalars().all()]
+
+
+@router.get("/voice-messages/archive", response_model=list[VoiceMessageResponse])
+async def get_archived_voice_messages(
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(VoiceMessage)
+        .where((VoiceMessage.host_id == current_user.id) | (VoiceMessage.host_id.is_(None)))
+        .where(VoiceMessage.status == MessageStatus.COMPLETED.value)
+        .options(selectinload(VoiceMessage.user))
+        .order_by(VoiceMessage.updated_at.desc(), VoiceMessage.id.desc())
+        .limit(100)
+    )
+    return [serialize_voice_message(message) for message in result.scalars().all()]
+
+
+@router.put("/voice-messages/{voice_message_id}/status", response_model=VoiceMessageResponse)
+async def update_voice_message_status(
+    voice_message_id: int,
+    request: MessageStatusUpdateRequest,
+    current_user: User = Depends(require_host),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(VoiceMessage)
+        .where(VoiceMessage.id == voice_message_id)
+        .options(selectinload(VoiceMessage.user))
+    )
+    voice_message = result.scalar_one_or_none()
+    if voice_message is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Голосовое сообщение не найдено")
+
+    if voice_message.host_id not in (None, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Голосовое сообщение уже обрабатывается другим ведущим")
+
+    voice_message.status = request.status
+    voice_message.updated_at = datetime.utcnow()
+    if request.status in (MessageStatus.IN_PROGRESS.value, MessageStatus.COMPLETED.value):
+        voice_message.host_id = current_user.id
+
+    await db.commit()
+    refreshed = await db.execute(
+        select(VoiceMessage)
+        .where(VoiceMessage.id == voice_message_id)
+        .options(selectinload(VoiceMessage.user))
+    )
+    return serialize_voice_message(refreshed.scalar_one())
 
 
 @router.post("/record", response_model=MediaResponse)

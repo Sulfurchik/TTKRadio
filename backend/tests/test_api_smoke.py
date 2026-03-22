@@ -222,6 +222,7 @@ class BackendSmokeTest(unittest.TestCase):
         status, payload = self.request("GET", "/api/auth/me", headers=host_headers)
         self.assertEqual(status, 200, payload)
         self.assertEqual(payload["login"], "hoster")
+        self.assertTrue(payload["is_online"])
 
         status, payload = self.request(
             "POST",
@@ -513,6 +514,38 @@ class BackendSmokeTest(unittest.TestCase):
         status, payload = self.request("GET", "/api/host/voice-messages", headers=host_headers)
         self.assertEqual(status, 200, payload)
         self.assertEqual(len(payload), 1)
+        voice_message_id = payload[0]["id"]
+        self.assertEqual(payload[0]["status"], "new")
+
+        status, payload = self.request(
+            "PUT",
+            f"/api/host/voice-messages/{voice_message_id}/status",
+            headers=host_headers,
+            json_body={"status": "in_progress"},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["status"], "in_progress")
+
+        status, payload = self.request(
+            "PUT",
+            f"/api/host/voice-messages/{voice_message_id}/status",
+            headers=host_headers,
+            json_body={"status": "completed"},
+        )
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(payload["status"], "completed")
+
+        status, payload = self.request("GET", "/api/host/voice-messages", headers=host_headers)
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(len(payload), 0)
+
+        status, payload = self.request("GET", "/api/host/voice-messages/archive", headers=host_headers)
+        self.assertEqual(status, 200, payload)
+        self.assertEqual(len(payload), 1)
+
+        status, payload = self.request("POST", "/api/auth/presence/offline", headers=host_headers)
+        self.assertEqual(status, 200, payload)
+        self.assertFalse(payload["is_online"])
 
         status, payload = self.request(
             "PUT",

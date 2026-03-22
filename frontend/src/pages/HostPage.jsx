@@ -269,8 +269,11 @@ function HostPage() {
   const loadMessages = async (archiveMode = showArchive) => {
     try {
       if (archiveMode) {
-        const data = await hostService.getArchivedMessages()
-        setMessages(data.map(message => ({ ...message, message_type: 'text' })))
+        const [archivedMessages, archivedVoiceMessages] = await Promise.all([
+          hostService.getArchivedMessages(),
+          hostService.getArchivedVoiceMessages(),
+        ])
+        setMessages(buildCommunicationItems(archivedMessages, archivedVoiceMessages))
         return
       }
 
@@ -536,9 +539,13 @@ function HostPage() {
     }
   }
 
-  const handleMessageStatusChange = async (messageId, status) => {
+  const handleMessageStatusChange = async (message, status) => {
     try {
-      await hostService.updateMessageStatus(messageId, status)
+      if (message.message_type === 'voice') {
+        await hostService.updateVoiceMessageStatus(message.id, status)
+      } else {
+        await hostService.updateMessageStatus(message.id, status)
+      }
       await loadMessages(showArchive)
     } catch (error) {
       console.error(error)
@@ -806,7 +813,7 @@ function HostPage() {
           </p>
           <div className="page-hero__chips">
             <span className={`hero-chip ${isLive ? 'hero-chip--live' : ''}`}>
-              <span className="recording-dot" style={{ opacity: isLive ? 1 : 0.35 }}></span>
+              <span className={`recording-dot ${isLive ? 'recording-dot--live' : ''}`}></span>
               {isLive ? `${t('host.onAir')} ${formatPlaybackTime(playbackSeconds)}` : t('host.broadcastStopped')}
             </span>
             <span className="hero-chip">{t('host.playlist')}: {selectedPlaylist?.name || t('host.notSelected')}</span>
@@ -817,7 +824,7 @@ function HostPage() {
               </span>
             )}
             <span className={`hero-chip ${isLiveMicActive ? 'hero-chip--live' : ''}`}>
-              <span className="recording-dot" style={{ opacity: isLiveMicActive ? 1 : 0.35 }}></span>
+              <span className={`recording-dot ${isLiveMicActive ? 'recording-dot--live' : ''}`}></span>
               {isLiveMicActive ? t('host.liveMicActive') : t('host.liveMicInactive')}
             </span>
           </div>
@@ -999,15 +1006,15 @@ function HostPage() {
               <div
                 key={playlist.id}
                 onClick={() => setSelectedPlaylistId(playlist.id)}
-                style={{
-                  padding: '1rem',
-                  background: selectedPlaylistId === playlist.id
-                    ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.1), rgba(229, 39, 19, 0.05))'
-                    : 'var(--ttk-gray-100)',
-                  border: selectedPlaylistId === playlist.id ? '2px solid var(--ttk-red)' : '2px solid transparent',
-                  borderRadius: 'var(--radius-lg)',
-                  cursor: 'pointer',
-                }}
+                  style={{
+                    padding: '1rem',
+                    background: selectedPlaylistId === playlist.id
+                      ? 'linear-gradient(135deg, rgba(229, 39, 19, 0.1), rgba(229, 39, 19, 0.05))'
+                      : 'var(--muted-bg)',
+                    border: selectedPlaylistId === playlist.id ? '2px solid var(--ttk-red)' : '2px solid transparent',
+                    borderRadius: 'var(--radius-lg)',
+                    cursor: 'pointer',
+                  }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
